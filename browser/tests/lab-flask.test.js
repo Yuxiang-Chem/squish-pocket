@@ -72,3 +72,36 @@ test('Legacy saves restore to the original bottle; each explicit bottle restores
   assert.equal(Engine.restore(legacy).bottleId,'classic');
   legacy.bottleId='unknown';assert.equal(Engine.restore(legacy),null);
 });
+test('A blob above the fill line cannot pop out of a neck and spring back',()=>{
+  const nodes=[];
+  for(let k=0;k<24;k++){
+    const angle=k/24*Math.PI*2,x=180+Math.cos(angle)*70,y=190+Math.sin(angle)*70;
+    nodes.push({x,y,px:x,py:y,bottleSide:g.contains(x,y)});
+  }
+  const body={x:180,y:190,nodes,inBottle:true,hasEntered:true};
+  g.bottleWalls(body);
+  for(const p of nodes)p.y-=20;
+  body.y=180;g.bottleWalls(body);
+  const escaped=nodes.filter(p=>p.x>140&&p.x<220&&(p.y<106||(!p.bottleSide&&!g.contains(p.x,p.y,.05))));
+  assert.equal(escaped.length,0);
+  assert.ok(nodes.filter(p=>p.bottleSide).every(p=>g.contains(p.x,p.y,.05)));
+  const e=new Engine(4,'lab-flask');e.blobs=[];
+  for(const [level,x,y] of [[7,145,355],[5,235,360],[4,180,310],[6,175,245],[3,250,280],[2,120,270],[1,200,220],[0,160,190]]){
+    const b=blob(level,x,y);b.age=6;b.inBottle=true;b.hasEntered=true;
+    prepare(b,e.radius(level),1/120);
+    for(const p of b.nodes){p.bottleSide=true;p.px=p.x;p.py=p.y;}
+    measure(b,1/120);e.blobs.push(b);
+  }
+  for(let i=0;i<240&&!e.over;i++)e.step(1/120);
+  assert.equal(e.over,false);
+  assert.ok(e.blobs.some(b=>b.bounds.minY<g.FILL_LINE));
+  for(let i=0;i<180&&!e.over;i++){
+    const prev=e.blobs.map(b=>({b,x:b.x,y:b.y,v:Math.hypot(b.vx,b.vy),minY:b.bounds.minY}));
+    e.step(1/120);
+    for(const p of prev){
+      if(!e.blobs.includes(p.b)||p.minY>=g.FILL_LINE||p.v>40)continue;
+      assert.ok(Math.hypot(p.b.x-p.x,p.b.y-p.y)<8,`level ${p.b.level} jumped while resting above the fill line`);
+    }
+  }
+  assert.equal(e.over,false);
+});
