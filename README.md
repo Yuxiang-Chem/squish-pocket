@@ -4,7 +4,7 @@ A soft-body physics merge game for phones. Shoot jelly blobs into a glass bottle
 
 **[Play in your browser](https://squish.chemisgreat.online/)**
 
-Choose **Classic** to play solo at your own pace, or **Multiplayer** to create or join a private two-player room with a six-character code (`GameRoom` Durable Object). Both modes let you choose the **Original bottle** or the separate **Three-neck flask** with a round body, tall central joint, and angled side necks. Each bottle saves its own Classic round; the original bottle remains the default.
+Choose **Classic** to play solo at your own pace, or **Multiplayer** to create or join a private two-player room with a six-character code (`GameRoom` Durable Object). Both modes let you choose the **Original bottle** or the separate **Three-neck flask** with a round body, tall central joint, and angled side necks. Each bottle saves its own Classic round; the original bottle remains the default. An existing three-neck round, including that flask's own highest score, is cleared once, and the next visit records a new one. The shared achievement score stays.
 
 The browser version is the current playable game. A separate, earlier native iPhone prototype is included for future development; its gameplay differs from the browser version and it has not been built or installed on iOS.
 

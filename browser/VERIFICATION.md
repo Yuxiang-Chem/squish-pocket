@@ -1,5 +1,11 @@
 # Verification
 
+Three-neck round re-recorded:
+
+- Both bottles keep a Classic round. The original bottle stays at `squish-pocket-v1`. The three-neck flask saves again at `squish-pocket-v1:lab-flask`.
+- The first visit deletes an existing flask save and sets `squish-pocket-v1:lab-flask:rerecorded` to `2`. Later visits keep the new flask round, and Continue is offered for either bottle. The flask's own highest score starts again at 0. The original bottle's round, the shared achievement score, and the world record stay.
+- `node --test tests/*.test.js` passed all 138 browser tests, including the one-time clear, a flask round written afterward, the flask best staying separate from the shared score, and Continue for an in-progress flask save.
+
 Multiplayer rooms and start-page mode selector (2026-11-03):
 
 - All **135 Node browser tests** and **11 Cloudflare room/achievement tests** pass (`npm test` in `browser/` and `cloudflare/`), plus the 4 Durable Object runtime tests in `cloudflare/runtime-tests/rooms.test.js`.

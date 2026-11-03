@@ -1,9 +1,10 @@
-import {createStartPage} from './start-page.js?v=36';
+import {createStartPage} from './start-page.js?v=39';
 import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=33';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
 import {RackMotion} from './rack-motion.js?v=33';
 import {isBottleId} from './bottles.js?v=33';
+import {displayedBest,pauseFootnote,readRound,rerecordFlaskRound,savedRoundReady,writeRound} from './round-record.js?v=40';
 
 import {DragMotion} from './drag-motion.js?v=29';
 import {HOLE,dragOutsideGlass} from './preparation.js?v=33';
@@ -27,35 +28,36 @@ const dragMotion=new DragMotion(reducedMotion);
 const dragCanvas=document.createElement('canvas'),dragCtx=dragCanvas.getContext('2d');
 dragCanvas.className='prep-drag-layer';dragCanvas.setAttribute('aria-hidden','true');document.body.append(dragCanvas);
 let previewEngine=null,previewAccumulator=0,previewAge=0;
-const KEY='squish-pocket-v1',SELECTED_BOTTLE='squish-pocket-selected-bottle';
-const saveKey=id=>id==='classic'?KEY:`${KEY}:${id}`;
+const SELECTED_BOTTLE='squish-pocket-selected-bottle';
 function restoreBottle(id,restoreSound=false){
   engine=new Engine(undefined,id);started=false;paused=false;
+  let savedBest=0;
   try{
-    const data=JSON.parse(localStorage.getItem(saveKey(id)));
-    if(data?.version===1){
+    const data=readRound(localStorage,id);
+    if(data){
       const restored=Engine.restore(data.engine);
       if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
-      if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
+      if(Number.isSafeInteger(data.best)&&data.best>=0)savedBest=data.best;
       if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
     }
   }catch{/* A missing or unavailable save starts a new bottle. */}
+  best=displayedBest(id,savedBest,engine.score,0);
 }
 let selectedBottle='classic';
 try{const selected=localStorage.getItem(SELECTED_BOTTLE);if(isBottleId(selected))selectedBottle=selected;}catch{}
+try{rerecordFlaskRound(localStorage);}catch{/* A blocked store keeps whatever flask round is already there. */}
 restoreBottle(selectedBottle,true);
-best=Math.max(best,engine.score);
 highestSeen=Math.max(0,...engine.blobs.map(b=>b.level));
 rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
 const achievements=connectAchievements({getEngine:()=>engine,getBest:()=>best,cancelAim,toast});
-best=Math.max(best,achievements.profile.score);
+best=displayedBest(engine.bottleId,best,engine.score,achievements.profile.score);
 achievements.observe(engine,best);
 
 function save(){
   achievements.observe(engine,best);
   try{
     const data={version:1,physicsDefaultsVersion:PHYSICS_DEFAULTS_VERSION,engine,started,best,sound};
-    if(gameMode==='classic')localStorage.setItem(saveKey(engine.bottleId),JSON.stringify(data));
+    if(gameMode==='classic')writeRound(localStorage,engine.bottleId,data);
     else if(activeRoom&&currentMatchKey===`${activeRoom.code}:${activeRoom.round}`)localStorage.setItem(`squish-pocket-match:${currentMatchKey}`,JSON.stringify({...data,round:activeRoom.round,seed:activeRoom.seed}));
   }
   catch{if(!storageWarning){toast('Browser saving is unavailable');storageWarning=true;}}
@@ -111,7 +113,7 @@ function resume(){paused=false;overlay.classList.add('hidden');accumulator=0;unl
 function pauseGame(){
   if(!started||engine.over)return;
   paused=true;cancelAim();save();updateHUD();
-  showOverlay({kicker:'A MOMENT TO YOURSELF',title:'Take a breather.',description:'Your little pile will be here.',button:'Keep squishing',action:resume,footnote:'SAVED IN THIS BROWSER.',friends:true,stats:true});
+  showOverlay({kicker:'A MOMENT TO YOURSELF',title:'Take a breather.',description:'Your little pile will be here.',button:'Keep squishing',action:resume,footnote:pauseFootnote(engine.bottleId),friends:true,stats:true});
 }
 function showMatchOverlay(){
   if(activeRoom?.phase==='finished'){
@@ -574,7 +576,7 @@ function abandonRound(){
 }
 function enterClassic(id){
   cancelAim();if(gameMode==='classic')save();gameMode='classic';activeRoom=null;currentMatchKey='';restoreBottle(id);
-  best=Math.max(best,engine.score,achievements.profile.score);resetVisuals();
+  best=displayedBest(id,best,engine.score,achievements.profile.score);resetVisuals();
   try{localStorage.setItem(SELECTED_BOTTLE,id);}catch{}
   if(!started||engine.over)newGame();else resume();
   updateHUD();save();
@@ -611,7 +613,7 @@ function updateMatch(room,connected){
 }
 shell=createStartPage({
   initialBottle:engine.bottleId,profile:achievements.profile,cancelAim,showSavedState,
-  classicStatus:id=>{try{const data=JSON.parse(localStorage.getItem(saveKey(id)));return data?.started===true&&!data.engine?.over;}catch{return false;}},
+  classicStatus:id=>{try{return savedRoundReady(id,readRound(localStorage,id));}catch{return false;}},
   onPage:next=>{page=next;dragCanvas.style.display=page==='game'?'':'none';},
   onShown:()=>{fitJar();resize();updateHUD();},
   suspend:()=>{cancelAim();paused=started;save();updateHUD();},
