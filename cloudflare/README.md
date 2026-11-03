@@ -89,8 +89,8 @@ Use a controlled staging record for full message-flow testing; never seed fake a
 
 ## Published state (2026-11-03)
 
-Published to <https://squish.chemisgreat.online/> as Worker version `a2ba0c73-a0b9-47e7-98f6-507240aeab5f`.
+Published to <https://squish.chemisgreat.online/> as Worker version `8ac7b003-d2dc-4051-8656-019e94b29914`.
 
-The production D1 database is `squish-pocket-achievements`, ID `6c18b29f-f6b2-4e44-bd32-40c3206db8bf`, in APAC. Migration `0001_achievements.sql` was applied successfully. No local QA data was uploaded. The public game, achievement module, and shared API were checked after deployment, and the live achievement dialog showed that records were up to date.
+The production D1 database is `squish-pocket-achievements`, ID `6c18b29f-f6b2-4e44-bd32-40c3206db8bf`, in APAC. Migrations `0001_achievements.sql` and `0002_bottle_achievements.sql` are applied. No local QA data was uploaded. After deployment the live API returned separate boards: the original bottle kept its existing record, and the three-neck flask board started empty. `emailReady` is true for both. An unknown bottle name is rejected. No fake record was created in production.
 
-The original bottle is restored as the default with its exact prior drawing and collision implementation. The bottle selector adds a separate reference-based flask with a round body, a taller central joint, and two angled side necks. Each bottle keeps its own browser-saved round; legacy saves restore into Original bottle. Stiffness is locked at 10%, viscosity at 0%, and the round summary places World Record to the right of Personal Best. Shared achievements and record-holder email messages are enabled; the live API returned `emailReady: true` after deployment. A direct delivery test to the real inbox succeeded; no fake record was created in production.
+The three-neck flask on the public site has straight cylindrical necks that flare into the larger round chamber. Each bottle keeps its own score, 2048 count, world record, and daily message. Stiffness stays locked at 10%, viscosity at 0%, and blob size at 150%.
