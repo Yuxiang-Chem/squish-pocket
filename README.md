@@ -53,6 +53,6 @@ Native checks and the remaining iOS validation limits are documented in [NATIVE.
 
 ## Deploy
 
-See [Cloudflare deployment](cloudflare/README.md). Credentials, local hosting bindings, build outputs, and deployment archives are excluded from this repository.
+See [Cloudflare deployment](cloudflare/README.md). The public game stays at <https://squish.chemisgreat.online/>. A separate testing Worker is configured for <https://squish-test.chemisgreat.online/> and uses its own achievements database. Credentials, local hosting bindings, build outputs, and deployment archives are excluded from this repository.
 
 An independent project inspired by [Sobosuba](https://sobosuba.com/), with original code, graphics, and branding. It is not an official Sobosuba port and includes no Sobosuba source code or assets.
