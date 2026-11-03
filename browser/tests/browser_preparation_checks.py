@@ -52,7 +52,7 @@ with sync_playwright() as p:
  page.wait_for_function("JSON.parse(localStorage.getItem('squish-pocket-v1')).engine.rackEvents[0]?.kind==='merge'");page.screenshot(path=str(out/'manual-side-merge.png'));page.mouse.up()
  state=read();assert state['rackEvents'][0]['kind']=='merge' and state['rackEvents'][0]['from']==[1,3]
  expect(page.locator('#shoot')).to_be_enabled(timeout=15000);state=read();assert state['shots']==0 and state['score']==0 and len(state['rack'])==3 and any(b['level']==1 for b in state['rack'])
- assert state['physics']=={'stiffness':30,'viscosity':20,'blobSize':80}
+ assert state['physics']=={'stiffness':30,'viscosity':20,'blobSize':150}
  assert not errors,errors
  print(json.dumps({'passed':True,'checks':['tap all cluster members','drag outside canvas','physical return','glass blocks direct placement','cancel without firing','return around bottle base','separated equal sides persist','explicit drag merge and refill'],'browser_errors':errors}))
  browser.close()

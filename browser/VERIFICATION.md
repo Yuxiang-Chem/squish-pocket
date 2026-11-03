@@ -77,3 +77,9 @@ Completed for contact merging, separation, and whole-blob spill handling:
 - JavaScript syntax and whitespace checks passed.
 
 Physics is a stylized particle-membrane approximation with finite numerical tolerances. Browser tests use Chromium with phone/touch emulation; physical iPhone Safari, audio output, and sustained device performance remain unverified on a device. The separate native Swift project has not been built with the iOS SDK.
+
+## Fixed player blob size
+
+Removed the blob-size slider and its input handlers. The playable app fixes size at 150%, including restored saves, while retaining score, best, inventory, stiffness, and viscosity preferences. Internal simulation size support remains for physics regression checks.
+
+Validation: 5 settings tests passed, including legacy-save resizing without loss of progress; Chromium and WebKit mobile checks passed for the two remaining sliders, saved-game migration, reload/restart, and narrow-phone layout. JavaScript syntax and diff whitespace checks passed.

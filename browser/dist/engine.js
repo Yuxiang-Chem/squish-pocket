@@ -1,10 +1,10 @@
-import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=28';
-import {normalizePhysics,materialFor} from './physics-settings.js?v=28';
+import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=29';
+import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
-import {refillRack,hasMatchingNeighbors} from './rack.js?v=28';
-import {bottleWalls,insideBottle,BOTTLE_MOUTH,FILL_LINE,updateBottleState,BOTTLE_VERSION,BOTTLE_FLOOR} from './bottle.js?v=28';
-import {eject} from './ejection.js?v=28';
-import {insertedOrder} from './preparation-gesture.js?v=28';
+import {refillRack,hasMatchingNeighbors} from './rack.js?v=29';
+import {bottleWalls,insideBottle,BOTTLE_MOUTH,FILL_LINE,updateBottleState,BOTTLE_VERSION,BOTTLE_FLOOR} from './bottle.js?v=29';
+import {eject} from './ejection.js?v=29';
+import {insertedOrder} from './preparation-gesture.js?v=29';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;
 export const radiusFor=(level,blobSize=150)=>13*1.2**level*blobSize/100;
 // Matching blobs fuse for MERGE_DELAY seconds before combining; the result then

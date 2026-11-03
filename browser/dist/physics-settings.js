@@ -27,3 +27,8 @@ export function upgradePhysicsDefaults(settings,version){
   if(version!==PHYSICS_DEFAULTS_VERSION&&normalized.stiffness===30&&normalized.viscosity===20&&normalized.blobSize===80)return {...DEFAULT_PHYSICS};
   return normalized;
 }
+
+// The playable game has a fixed size; legacy saves retain their material choices.
+export function playerPhysics(settings,version){
+  return {...upgradePhysicsDefaults(settings,version),blobSize:DEFAULT_PHYSICS.blobSize};
+}

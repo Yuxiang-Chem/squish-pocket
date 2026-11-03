@@ -1,13 +1,13 @@
-import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=28';
+import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=29';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
-import {DEFAULT_PHYSICS,PHYSICS_DEFAULTS_VERSION,upgradePhysicsDefaults} from './physics-settings.js?v=28';
-import {RackMotion} from './rack-motion.js?v=28';
-import {drawBottleBack,drawBottleFront,bottleLeftAt,insideBottle,BOTTLE_MOUTH,FILL_LINE,BOTTLE_FLOOR} from './bottle.js?v=28';
+import {DEFAULT_PHYSICS,PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=29';
+import {RackMotion} from './rack-motion.js?v=29';
+import {drawBottleBack,drawBottleFront,bottleLeftAt,insideBottle,BOTTLE_MOUTH,FILL_LINE,BOTTLE_FLOOR} from './bottle.js?v=29';
 
-import {DragMotion} from './drag-motion.js?v=28';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=28';
-import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=28';
-import {installShootTouchGuard} from './shoot-touch.js?v=28';
+import {DragMotion} from './drag-motion.js?v=29';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=29';
+import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
+import {installShootTouchGuard} from './shoot-touch.js?v=29';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
@@ -30,7 +30,7 @@ try{
   const save=JSON.parse(localStorage.getItem(KEY));
   if(save?.version===1){
     const restored=Engine.restore(save.engine);
-    if(restored){engine=restored;engine.setPhysics(upgradePhysicsDefaults(engine.physics,save.physicsDefaultsVersion));started=save.started===true;paused=started;}
+    if(restored){engine=restored;engine.setPhysics(playerPhysics(engine.physics,save.physicsDefaultsVersion));started=save.started===true;paused=started;}
     if(Number.isSafeInteger(save.best)&&save.best>=0)best=save.best;
     if(typeof save.sound==='boolean')sound=save.sound;
   }
@@ -325,9 +325,9 @@ $('restart').onclick=()=>{
 $('confirm-reset').onclick=()=>{$('reset-dialog').close();newGame();};
 $('help').onclick=()=>{cancelAim();$('guide').showModal();};
 function updatePhysicsUI(){
-  for(const name of ['stiffness','viscosity','blobSize']){
+  for(const name of ['stiffness','viscosity']){
     const value=engine.physics[name];$(name).value=value;$(`${name}-value`).textContent=`${value}%`;
-    $(name).setAttribute('aria-valuetext',`${value}%, ${name==='stiffness'?(value<35?'soft':value>70?'firm':'medium'):name==='blobSize'?(value<90?'small blobs':value>115?'large blobs':'standard blobs'):(value<35?'free-flowing':value>70?'thick and slow':'moderate resistance')}`);
+    $(name).setAttribute('aria-valuetext',`${value}%, ${name==='stiffness'?(value<35?'soft':value>70?'firm':'medium'):(value<35?'free-flowing':value>70?'thick and slow':'moderate resistance')}`);
   }
 }
 function resetPreview(){
@@ -335,9 +335,9 @@ function resetPreview(){
   previewEngine.blobs=[blob(5,125,BOTTLE_FLOOR-178+previewEngine.radius(5)+8,150,70)];previewAccumulator=0;previewAge=0;
 }
 $('settings').onclick=()=>{cancelAim();updatePhysicsUI();resetPreview();$('settings-dialog').showModal();};
-for(const name of ['stiffness','viscosity','blobSize'])$(name).addEventListener('input',()=>{
-  engine.setPhysics({...engine.physics,[name]:Number($(name).value)});
-  if(name==='blobSize')resetPreview();else previewEngine?.setPhysics(engine.physics);updatePhysicsUI();save();
+for(const name of ['stiffness','viscosity'])$(name).addEventListener('input',()=>{
+  engine.setPhysics(playerPhysics({...engine.physics,[name]:Number($(name).value)},PHYSICS_DEFAULTS_VERSION));
+  previewEngine?.setPhysics(engine.physics);updatePhysicsUI();save();
 });
 $('reset-physics').onclick=()=>{engine.setPhysics(DEFAULT_PHYSICS);updatePhysicsUI();resetPreview();save();};
 $('preview-drop').onclick=resetPreview;

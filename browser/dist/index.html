@@ -6,7 +6,7 @@
   <meta name="description" content="A pocketful of possibility. Aim, drop, and merge squishy little blobs in a relaxing physics game, made for your phone.">
   <title>Squish Pocket — a little room to play</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=28"><script type="module" src="app.js?v=28"></script>
+  <link rel="stylesheet" href="style.css?v=29"><script type="module" src="app.js?v=29"></script>
 </head>
 <body>
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -103,12 +103,6 @@
   <p id="viscosity-description">Higher adds resistance, making movement slower and more damped.</p>
   <input id="viscosity" type="range" min="0" max="100" step="1" value="0" aria-describedby="viscosity-description">
   <div class="range-ends"><span>Free-flowing</span><span>Thick & slow</span></div>
- </div>
- <div class="setting-control">
-  <div class="setting-heading"><label for="blobSize">Blob size</label><output id="blobSize-value" for="blobSize">150%</output></div>
-  <p id="blobSize-description">Resize all blobs, including the current pile. Larger blobs fill the bottle faster.</p>
-  <input id="blobSize" type="range" min="40" max="150" step="5" value="150" aria-describedby="blobSize-description">
-  <div class="range-ends"><span>Small · 40%</span><span>Large · 150%</span></div>
  </div>
  <div class="settings-actions"><button class="text-button" id="reset-physics">Reset to defaults</button><button class="primary" data-close>Done <svg><use href="#i-arrow"/></svg></button></div>
  <p class="settings-note">Changes apply to your current game and future rounds.</p>

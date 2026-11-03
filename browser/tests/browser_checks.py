@@ -49,7 +49,7 @@ with sync_playwright() as p:
  page.locator('#restart').click();page.locator('#reset-dialog [data-close]').click();assert page.locator('#overlay').is_hidden()
  page.locator('#restart').click();page.locator('#confirm-reset').click();assert page.locator('#score').inner_text()=='0'
  assert page.evaluate("JSON.parse(localStorage.getItem('squish-pocket-v1')).engine.physics")=={'stiffness':90,'viscosity':80,'blobSize':150}
- page.locator('#settings').click();page.locator('#reset-physics').click();assert page.locator('#blobSize').input_value()=='150';page.locator('#settings-dialog [data-close]').last.click()
+ page.locator('#settings').click();page.locator('#reset-physics').click();assert page.locator('#blobSize').count()==0;page.locator('#settings-dialog [data-close]').last.click()
  expect(page.locator('#shoot')).to_be_enabled(timeout=15000);page.locator('#canvas').focus();page.keyboard.press('Digit1');page.keyboard.press('ArrowLeft');page.keyboard.press('ArrowUp');page.keyboard.press('Space')
  state=page.evaluate("JSON.parse(localStorage.getItem('squish-pocket-v1')).engine");assert state['shots']==1 and state['blobs'][-1]['vx']<0
  for w,h in [(375,667),(320,568),(430,932)]:

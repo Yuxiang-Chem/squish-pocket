@@ -1,10 +1,10 @@
-import {prepare,measure,membrane,overlap,contact,separateBodies} from './softbody.js?v=28';
-import {materialFor,normalizePhysics} from './physics-settings.js?v=28';
-import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=28';
-import {eject} from './ejection.js?v=28';
-import {outlinesTouch,renderedOutline} from './preparation-contact.js?v=28';
-import {MAX_LEVEL} from './engine.js?v=28';
-import {insertedOrder} from './preparation-gesture.js?v=28';
+import {prepare,measure,membrane,overlap,contact,separateBodies} from './softbody.js?v=29';
+import {materialFor,normalizePhysics} from './physics-settings.js?v=29';
+import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=29';
+import {eject} from './ejection.js?v=29';
+import {outlinesTouch,renderedOutline} from './preparation-contact.js?v=29';
+import {MAX_LEVEL} from './engine.js?v=29';
+import {insertedOrder} from './preparation-gesture.js?v=29';
 export {trayRadius};
 export const RACK_Y=HOLE.y;
 const copy=items=>items.map(item=>({...item}));

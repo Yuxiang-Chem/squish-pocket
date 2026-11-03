@@ -11,7 +11,9 @@ with sync_playwright() as p:
  def state():return page.evaluate("JSON.parse(localStorage.getItem('squish-pocket-v1'))")
  def controls(values):
   page.locator('#settings').click()
-  for key,value in values.items():assert page.locator('#'+key).input_value()==str(value)
+  for key,value in values.items():
+   if key!='blobSize':assert page.locator('#'+key).input_value()==str(value)
+  assert page.locator('#blobSize').count()==0
   page.locator('#settings-dialog [data-close]').last.click()
  def fixture(physics,defaults=None,blobs=(),shots=0):
   e={'blobs':list(blobs),'score':64,'shots':shots,'current':0,'next':4,'cooldown':0,'over':False,'seed':123,'rack':[{'id':1,'level':2},{'id':2,'level':0},{'id':3,'level':4}],'rackSerial':3,'selectedId':2,'incoming':{'level':4,'side':'left'},'rackEvents':[],'physics':physics}
@@ -20,8 +22,9 @@ with sync_playwright() as p:
   page.goto('http://127.0.0.1:4173/?teststate='+quote(json.dumps(saved)),wait_until='networkidle')
  default={'stiffness':10,'viscosity':0,'blobSize':150}
  page.goto('http://127.0.0.1:4173',wait_until='networkidle');controls(default)
- page.locator('#settings').click();page.locator('#stiffness').press('End');page.locator('#viscosity').press('End');page.locator('#blobSize').press('Home');page.locator('#reset-physics').click()
- for key,value in default.items():assert page.locator('#'+key).input_value()==str(value)
+ page.locator('#settings').click();page.locator('#stiffness').press('End');page.locator('#viscosity').press('End');page.locator('#reset-physics').click()
+ for key,value in default.items():
+  if key!='blobSize':assert page.locator('#'+key).input_value()==str(value)
  page.screenshot(path=str(out/'spill-new-defaults.png'));page.locator('#settings-dialog [data-close]').last.click()
  page.locator('#start').click();expect(page.locator('#shoot')).to_be_enabled(timeout=15000);assert state()['engine']['physics']==default
  page.locator('#shoot').click();page.wait_for_timeout(650);assert not state()['engine']['over']
@@ -44,9 +47,9 @@ with sync_playwright() as p:
  # Previous stock defaults upgrade without resetting score or best.
  fixture({'stiffness':30,'viscosity':20,'blobSize':80});controls(default);page.locator('#start').click();page.wait_for_timeout(2400)
  saved=state();assert saved['physicsDefaultsVersion']==1 and saved['engine']['physics']==default and saved['engine']['score']==64 and saved['best']==128
- # A prior custom profile, and an intentional later choice of the old profile, both persist.
- fixture({'stiffness':18,'viscosity':50,'blobSize':110});controls({'stiffness':18,'viscosity':50,'blobSize':110})
- fixture({'stiffness':30,'viscosity':20,'blobSize':80},1);controls({'stiffness':30,'viscosity':20,'blobSize':80})
+ # Material choices persist while every prior size becomes fixed at 150%.
+ fixture({'stiffness':18,'viscosity':50,'blobSize':110});controls({'stiffness':18,'viscosity':50,'blobSize':150})
+ fixture({'stiffness':30,'viscosity':20,'blobSize':80},1);controls({'stiffness':30,'viscosity':20,'blobSize':150})
  assert not errors,errors
  print(json.dumps({'passed':True,'checks':['fresh defaults and Reset','valid center entry','missed shot game over','reason and progress persist','restart preserves best and settings','one-time default upgrade','custom settings preserved'],'browser_errors':errors}))
  browser.close()

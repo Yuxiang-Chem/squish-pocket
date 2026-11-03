@@ -17,7 +17,7 @@ npm start
 
 Open <http://localhost:4173>. On iPhone, open the public game in Safari and use **Share → Add to Home Screen**.
 
-Pull a ready blob downward to charge and release to shoot, or hold **Shoot**. While holding Shoot, slide horizontally to aim and vertically to adjust force. Lift a blob to merge or rearrange it; use the bottom arrows to select a neighboring blob. Physics settings adjust stiffness, viscosity, and size. Progress stays in the current browser's local storage.
+Pull a ready blob downward to charge and release to shoot, or hold **Shoot**. While holding Shoot, slide horizontally to aim and vertically to adjust force. Lift a blob to merge or rearrange it; use the bottom arrows to select a neighboring blob. Physics settings adjust stiffness and viscosity. Blob size is fixed at 150%. Progress stays in the current browser's local storage.
 
 ## Project layout
 

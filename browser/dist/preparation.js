@@ -1,4 +1,4 @@
-import {BOTTLE_MOUTH,BOTTLE_FLOOR,bottleLeftAt,bottleOutline,insideBottle} from './bottle.js?v=28';
+import {BOTTLE_MOUTH,BOTTLE_FLOOR,bottleLeftAt,bottleOutline,insideBottle} from './bottle.js?v=29';
 export const HOLE={x:180,y:58};
 export const trayRadius=(level,blobSize=150)=>Math.max(9,Math.min(22,13*1.2**level)*blobSize/100);
 // A line of touching neighbors: the middle separates the two outer blobs.
