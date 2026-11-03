@@ -20,7 +20,7 @@ For email UI testing, copy `.dev.vars.example` to `.dev.vars`, then restart the 
 ```sh
 npm test
 npm run test:rooms
-npm exec -- wrangler deploy --dry-run
+npm exec -- wrangler deploy --dry-run --env=""
 ```
 
 ## Multiplayer rooms (`GameRoom` Durable Object)
@@ -30,6 +30,21 @@ npm exec -- wrangler deploy --dry-run
 - Only the host (slot 0) chooses the bottle (`classic` or `lab-flask`) and starts the match (`start`). Starting a round assigns a shared 32-bit seed (`round`, `seed`) so both players get the same sequence of blobs in separate bottles.
 - Live progress updates (`progress`) validate scores, shot counts, highest tiles, and up to 90 blob positions, ignoring stale or decreasing updates and duplicate no-op ticks. The match concludes once both players finish or a player forfeits.
 - Disconnected players during an active round have a 30-second grace period (`RECONNECT_GRACE = 30000`), enforced both on incoming requests/messages and via Durable Object storage alarms (`syncAlarm`), before forfeiting. Rooms expire after 6 hours (`ROOM_TTL`).
+
+## Testing domain
+
+The testing site is a separate Worker, `squish-pocket-test`, at <https://squish-test.chemisgreat.online/>. It is configured as the `test` environment in `wrangler.jsonc`. Deploying it does not publish to `squish.chemisgreat.online` and does not use the production achievements database. Multiplayer rooms use that Worker's own Durable Object storage. Record email stays off (`EMAIL_ENABLED` is `"false"`) until you deliberately enable it for a controlled test.
+
+Create the test database in APAC, apply its migrations, then deploy. The deploy attaches the custom domain and creates its DNS record and certificate on the existing `chemisgreat.online` zone. Do not add this hostname to the top-level `routes`: an environment that inherits those routes would take `squish.chemisgreat.online` away from the public Worker.
+
+```sh
+npm exec -- wrangler login
+npm exec -- wrangler d1 create squish-pocket-achievements-test --location apac --env test
+npm run db:test
+npm run deploy:test
+```
+
+`wrangler d1 create --env test` writes the new `database_id` into the `test` environment only. Keep that id. The first deploy needs it, and the id is not a secret. Leave production's `database_id` unchanged.
 
 ## Production database
 
@@ -43,7 +58,7 @@ npm exec -- wrangler d1 create squish-pocket-achievements
 Add the returned `database_id` to the `ACHIEVEMENTS` entry in `wrangler.jsonc`, then apply the migration **to that new database** before deploying:
 
 ```sh
-npm exec -- wrangler d1 migrations apply ACHIEVEMENTS --remote
+npm exec -- wrangler d1 migrations apply ACHIEVEMENTS --remote --env=""
 npm run deploy
 ```
 
