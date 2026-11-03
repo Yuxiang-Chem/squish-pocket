@@ -1,10 +1,13 @@
-// The original bottle keeps the only Classic round and the best stored with it.
-// The three-neck flask is still playable, but it does not keep a separate record.
+// Each bottle keeps its own Classic round. An existing three-neck round is
+// cleared once, then later play records a new one under the same key.
 export const CLASSIC_ROUND_KEY = 'squish-pocket-v1';
-export const RETIRED_ROUND_KEYS = Object.freeze(['squish-pocket-v1:lab-flask']);
+export const FLASK_ROUND_KEY = 'squish-pocket-v1:lab-flask';
+export const FLASK_RERECORD_FLAG = 'squish-pocket-v1:lab-flask:rerecorded';
 
 export function roundSaveKey(bottleId) {
-  return bottleId === 'classic' ? CLASSIC_ROUND_KEY : null;
+  if (bottleId === 'classic') return CLASSIC_ROUND_KEY;
+  if (bottleId === 'lab-flask') return FLASK_ROUND_KEY;
+  return null;
 }
 
 export function readRound(storage, bottleId) {
@@ -25,9 +28,16 @@ export function writeRound(storage, bottleId, data) {
   return true;
 }
 
-export function forgetRetiredRounds(storage) {
-  for (const key of RETIRED_ROUND_KEYS) {
-    try { storage.removeItem(key); } catch { /* A blocked store simply leaves the unused flask record unread. */ }
+// Drop a previously saved flask round the first time this build runs.
+// The flag stays set so the round written afterward is kept.
+export function rerecordFlaskRound(storage) {
+  try {
+    if (storage.getItem(FLASK_RERECORD_FLAG) === '1') return false;
+    storage.removeItem(FLASK_ROUND_KEY);
+    storage.setItem(FLASK_RERECORD_FLAG, '1');
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -41,12 +51,11 @@ export function classicPlayLabel(bottleId, saved) {
 }
 
 export function classicSaveNote(bottleId, saved) {
-  if (!roundSaveKey(bottleId)) return 'The three-neck flask starts fresh. The original bottle keeps its record.';
-  return saved ? 'Your saved pile is ready.' : 'The original bottle keeps its round in this browser.';
+  return saved
+    ? 'Your saved pile is ready. The other bottle’s round stays saved too.'
+    : 'Each bottle keeps its own saved round.';
 }
 
-export function pauseFootnote(bottleId) {
-  return roundSaveKey(bottleId)
-    ? 'SAVED IN THIS BROWSER.'
-    : 'THIS FLASK STARTS FRESH NEXT VISIT. YOUR ORIGINAL-BOTTLE RECORD STAYS.';
+export function pauseFootnote() {
+  return 'SAVED IN THIS BROWSER.';
 }

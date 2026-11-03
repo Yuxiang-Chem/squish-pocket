@@ -1,10 +1,10 @@
 # Verification
 
-Three-neck saved round removed:
+Three-neck round re-recorded:
 
-- The original bottle still saves its Classic round, personal best, and shared world record under `squish-pocket-v1`.
-- The three-neck flask no longer keeps `squish-pocket-v1:lab-flask`. An existing flask save is deleted and is not offered as Continue. Shared achievements stay common to both bottles.
-- `node --test tests/*.test.js` passed all 137 browser tests, including the new round-record checks and the flask physics matrix. A headless Chrome pass confirmed an old flask save is deleted, Continue is offered only for the original bottle, and playing the flask leaves that original record unchanged.
+- Both bottles keep a Classic round. The original bottle stays at `squish-pocket-v1`. The three-neck flask saves again at `squish-pocket-v1:lab-flask`.
+- The first visit deletes an existing flask save and sets `squish-pocket-v1:lab-flask:rerecorded`. Later visits keep the new flask round, and Continue is offered for either bottle. The original bottle's round and shared achievements stay.
+- `node --test tests/*.test.js` passed all 137 browser tests, including the one-time clear, a flask round written afterward, and Continue for an in-progress flask save.
 
 Multiplayer rooms and start-page mode selector (2026-11-03):
 

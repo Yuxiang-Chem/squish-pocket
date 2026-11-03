@@ -1,10 +1,10 @@
-import {createStartPage} from './start-page.js?v=38';
+import {createStartPage} from './start-page.js?v=39';
 import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=33';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
 import {RackMotion} from './rack-motion.js?v=33';
 import {isBottleId} from './bottles.js?v=33';
-import {forgetRetiredRounds,pauseFootnote,readRound,roundSaveKey,savedRoundReady,writeRound} from './round-record.js?v=38';
+import {pauseFootnote,readRound,rerecordFlaskRound,savedRoundReady,writeRound} from './round-record.js?v=39';
 
 import {DragMotion} from './drag-motion.js?v=29';
 import {HOLE,dragOutsideGlass} from './preparation.js?v=33';
@@ -32,20 +32,17 @@ const SELECTED_BOTTLE='squish-pocket-selected-bottle';
 function restoreBottle(id,restoreSound=false){
   engine=new Engine(undefined,id);started=false;paused=false;
   try{
-    forgetRetiredRounds(localStorage);
-    // The flask keeps no round of its own. Its visit still shows the original bottle's best.
-    const data=readRound(localStorage,roundSaveKey(id)?id:'classic');
+    const data=readRound(localStorage,id);
     if(!data)return;
-    if(roundSaveKey(id)){
-      const restored=Engine.restore(data.engine);
-      if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
-    }
+    const restored=Engine.restore(data.engine);
+    if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
     if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
     if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
   }catch{/* A missing or unavailable save starts a new bottle. */}
 }
 let selectedBottle='classic';
 try{const selected=localStorage.getItem(SELECTED_BOTTLE);if(isBottleId(selected))selectedBottle=selected;}catch{}
+try{rerecordFlaskRound(localStorage);}catch{/* A blocked store keeps whatever flask round is already there. */}
 restoreBottle(selectedBottle,true);
 best=Math.max(best,engine.score);
 highestSeen=Math.max(0,...engine.blobs.map(b=>b.level));
@@ -57,7 +54,6 @@ achievements.observe(engine,best);
 function save(){
   achievements.observe(engine,best);
   try{
-    forgetRetiredRounds(localStorage);
     const data={version:1,physicsDefaultsVersion:PHYSICS_DEFAULTS_VERSION,engine,started,best,sound};
     if(gameMode==='classic')writeRound(localStorage,engine.bottleId,data);
     else if(activeRoom&&currentMatchKey===`${activeRoom.code}:${activeRoom.round}`)localStorage.setItem(`squish-pocket-match:${currentMatchKey}`,JSON.stringify({...data,round:activeRoom.round,seed:activeRoom.seed}));
