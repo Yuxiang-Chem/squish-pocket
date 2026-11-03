@@ -1,0 +1,26 @@
+# Local files and build products
+.DS_Store
+build/
+DerivedData/
+node_modules/
+__pycache__/
+*.py[cod]
+*.xcuserstate
+xcuserdata/
+test-results/
+playwright-report/
+
+# Hosting bindings, caches, credentials, and local environments
+.openai/
+.sites-runtime/
+.wrangler/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+
+# Deployment snapshots
+*.tar.gz

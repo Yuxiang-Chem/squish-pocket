@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f4ec"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="A pocketful of possibility. Aim, drop, and merge squishy little blobs in a relaxing physics game, made for your phone.">
+  <title>Squish Pocket — a little room to play</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css?v=28"><script type="module" src="app.js?v=28"></script>
+</head>
+<body>
+<svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
+<symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><path d="M8.5 8a3.5 3.5 0 1 1 6 2.4c-1.5 1-2.5 1.6-2.5 3.6M12 18h.01"/></symbol>
+<symbol id="i-sound" viewBox="0 0 24 24"><path d="m11 5-6 4H2v6h3l6 4ZM15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/></symbol>
+<symbol id="i-muted" viewBox="0 0 24 24"><path d="m11 5-6 4H2v6h3l6 4ZM16 9l6 6M22 9l-6 6"/></symbol>
+<symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 .9 7M4 4v6h6"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-crown" viewBox="0 0 24 24"><path d="m3 6 5 5 4-7 4 7 5-5-2 13H5ZM7 22h10"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M3 6h4m4 0h10M3 12h10m4 0h4M3 18h4m4 0h10"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></symbol>
+</defs></svg>
+<main class="layout">
+  <aside class="left-notes">
+    <div class="eyebrow"><span class="little-star">✳</span> A LITTLE ROOM TO PLAY</div>
+    <h1>Good things<br>come in<br><em>squishy</em><br>packages.</h1>
+    <p>Find a matching friend.<br>Make something a little bigger.<br>See where the pile takes you.</p>
+    <div class="note-rule"></div>
+    <div class="tiny-note"><span class="status-dot"></span> No timer. No hurry. Just one more merge.</div>
+    <div class="keyboard-note"><kbd>←</kbd> <kbd>→</kbd> aim <span>·</span> <kbd>↑</kbd> <kbd>↓</kbd> force<br><br><kbd>space</kbd> shoot</div>
+  </aside>
+  <section class="game" aria-label="Squish Pocket game">
+    <header class="game-header">
+      <a class="wordmark" href="./" aria-label="Squish Pocket home">squish<span>pocket</span><span class="logo-dot"></span></a>
+      <div class="header-actions">
+        <button class="icon-button" id="settings" aria-label="Physics settings" title="Physics settings"><svg><use href="#i-settings"/></svg></button>
+        <button class="icon-button" id="help" aria-label="How to play"><svg><use href="#i-help"/></svg></button>
+        <button class="icon-button" id="pause" aria-label="Pause game"><svg><use href="#i-pause"/></svg></button>
+      </div>
+    </header>
+    <div class="jar-wrap"><div class="jar" id="jar">
+      <canvas id="canvas" width="720" height="840" tabindex="0" aria-label="Blob jar. Choose a ready blob and shoot it from its place in the row. Left and right to aim, up and down for force, space to shoot."></canvas>
+      <div class="rack-choices" aria-label="Choose one of three ready blobs">
+        <button id="rack-0" class="rack-choice" aria-label="Choose left blob" aria-pressed="false"></button>
+        <button id="rack-1" class="rack-choice selected-choice" aria-label="Selected blob" aria-pressed="true"></button>
+        <button id="rack-2" class="rack-choice" aria-label="Choose right blob" aria-pressed="false"></button>
+      </div>
+      <div class="game-overlay" id="overlay">
+        <div class="intro-friends" aria-hidden="true"><span class="friend peach">•ᴗ•</span><span class="friend mint">•ᴗ•</span><span class="friend yellow">•ᴗ•</span></div>
+        <span class="eyebrow" id="overlay-kicker">HELLO, LITTLE DAYDREAMER</span>
+        <h2 id="overlay-title">A pocketful<br>of possibility.</h2>
+        <p id="overlay-description">Drop. Match. Squish. Repeat.</p>
+        <div id="round-stats" class="round-stats hidden" aria-label="Round results">
+          <div><span class="label">ROUND SCORE</span><strong id="score">0</strong></div>
+          <div><span class="label">PERSONAL BEST</span><strong id="best">0</strong></div>
+        </div>
+        <button class="primary" id="start"><span>Let’s squish</span><svg><use href="#i-arrow"/></svg></button>
+        <button class="text-button hidden" id="secondary">Start a fresh game</button>
+        <span class="overlay-footnote" id="overlay-footnote">NO RUSH. JUST ONE MORE MERGE.</span>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div></div>
+    <div class="game-controls">
+      <div class="power" aria-hidden="true"><span>SOFT</span><div class="power-track"><i id="power-fill"></i></div><span>STRONG</span></div>
+      <div class="control-actions"><button class="icon-button" id="sound" aria-label="Turn sound off" aria-pressed="true"><svg><use href="#i-sound"/></svg></button><button class="icon-button" id="restart" aria-label="Restart game"><svg><use href="#i-reset"/></svg></button></div>
+    </div>
+    <div class="launch-controls"><button id="select-left" class="select-button" aria-label="Select the blob to the left" title="Select left blob"><svg><use href="#i-chevron-left"/></svg></button><button id="shoot" class="shoot-button" aria-label="Hold to charge, slide left or right to aim, release to shoot the selected blob">Hold to shoot ↓</button><button id="select-right" class="select-button" aria-label="Select the blob to the right" title="Select right blob"><svg><use href="#i-chevron-right"/></svg></button></div>
+    <p class="touch-hint" id="hint">PULL DOWN TO SHOOT <span>·</span> LIFT UP TO MERGE &amp; REARRANGE</p>
+  </section>
+  <aside class="right-notes">
+    <div class="evolution-heading"><span class="label">SMALL BEGINNINGS</span><span>↓</span></div>
+    <div class="evolution" id="evolution"></div>
+    <p class="evolution-note">Same number.<br>New possibilities.</p>
+    <div class="made-note">MADE FOR A LITTLE DOWNTIME.<br><a href="https://sobosuba.com/" target="_blank" rel="noopener">Inspired by Sobosuba ↗</a><br><span>Independent browser prototype</span></div>
+  </aside>
+</main>
+<dialog id="guide" aria-labelledby="guide-title">
+ <button class="icon-button close-dialog" data-close aria-label="Close guide"><svg><use href="#i-close"/></svg></button>
+ <span class="eyebrow">A LITTLE GUIDE</span><h2 id="guide-title">Make room for<br>something bigger.</h2>
+ <div class="guide-row"><span>01</span><div><h3>Choose one of three</h3><p>Three jelly blobs wait in a row. The middle separates the left and right blobs. Tap any one to select it. Lift a blob upward, then move it left or right to rearrange the row. Neighbors slide aside to make room; release in the preparation row to place it. Lifting the middle blob to the right pushes the right blob into the middle. Release far away to return to the original place. Drag a blob into a matching one to merge on contact. Contacts are checked throughout dragging and the return journey, including the two sides. Matching neighbors combine automatically until the middle differs from both sides. Equal left and right blobs stay separate until you bring them together. Matching new arrivals can combine as they enter. Values can grow to 4096. The ‹ and › buttons beside Shoot select the blob to the left or right. Keyboard: 1, 2, 3 select a blob.</p></div></div>
+ <div class="guide-row"><span>02</span><div><h3>Choose your force</h3><p>Pull any ready blob downward, straight or diagonally toward the bottle, to build force; the aiming arrow appears as soon as it starts charging. Release to shoot it from its own place in the row; it does not jump to the middle first. Side blobs can aim widely toward the far side but only gently toward their nearer rim, so every shot lands in the bottle. Pull farther for more force; pull back to the starting height or cancel the gesture to stop. A lifting gesture stays in preparation mode even when you lower it again. You can also hold Shoot to charge up: slide your finger up for more force or down for less, and left or right to turn the arrow, then release to fire the selected blob. Slide down to 0% and release to cancel. Shoot stays ready while other blobs move or refill; you can also grab another ready blob before its previous movement finishes. A quick press is gentle; a longer hold is stronger. You can also drag inside the glass to aim: drag farther for more force and release to shoot. Dragging a ready blob cannot place it inside the bottle. Keyboard: left/right aim, up/down choose force, Space shoots.</p></div></div>
+ <div class="guide-row"><span>03</span><div><h3>More little friends</h3><p>New blobs shoot in from the left or right with values 2, 4, 8, 16, or 32. They bump, push, and squash against the other ready blobs. Matching neighbors merge on contact. Your stiffness and viscosity settings also affect the preparation row. Refill continues until three are ready. Merges in the pile earn points.</p></div></div>
+ <div class="guide-row"><span>04</span><div><h3>Mind the dotted line</h3><p>A partially spilled blob stays in play while any part is inside. The round ends only once the whole blob slides out; you can watch it fall before the result appears. The dotted line is a capacity guide. Lifting and rearranging never shoot. Downward pulls launch only on release.</p></div></div>
+ <p class="guide-footer">Your game saves in this browser. On iPhone, use Safari’s Share menu → Add to Home Screen for an app-like view.</p>
+ <button class="primary" data-close>Got it. Let’s play <svg><use href="#i-arrow"/></svg></button>
+</dialog>
+<dialog id="settings-dialog" aria-labelledby="settings-title">
+ <button class="icon-button close-dialog" data-close aria-label="Close settings"><svg><use href="#i-close"/></svg></button>
+ <span class="eyebrow">MAKE IT FEEL LIKE YOU</span><h2 id="settings-title">Your kind of squishy.</h2>
+ <p class="settings-intro">Tune how the blobs move and feel. Your choices save automatically.</p>
+ <div class="physics-preview"><canvas id="physics-preview" width="720" height="360" aria-label="Live preview of the selected blob physics"></canvas><button id="preview-drop" type="button">Drop again ↻</button><span class="preview-label">LIVE PREVIEW</span></div>
+ <div class="setting-control">
+  <div class="setting-heading"><label for="stiffness">Stiffness</label><output id="stiffness-value" for="stiffness">10%</output></div>
+  <p id="stiffness-description">Go from flowing, liquid-like jelly to firm blobs that barely deform.</p>
+  <input id="stiffness" type="range" min="0" max="100" step="1" value="10" aria-describedby="stiffness-description">
+  <div class="range-ends"><span>Liquid jelly</span><span>Almost rigid</span></div>
+ </div>
+ <div class="setting-control">
+  <div class="setting-heading"><label for="viscosity">Viscosity</label><output id="viscosity-value" for="viscosity">0%</output></div>
+  <p id="viscosity-description">Higher adds resistance, making movement slower and more damped.</p>
+  <input id="viscosity" type="range" min="0" max="100" step="1" value="0" aria-describedby="viscosity-description">
+  <div class="range-ends"><span>Free-flowing</span><span>Thick & slow</span></div>
+ </div>
+ <div class="setting-control">
+  <div class="setting-heading"><label for="blobSize">Blob size</label><output id="blobSize-value" for="blobSize">150%</output></div>
+  <p id="blobSize-description">Resize all blobs, including the current pile. Larger blobs fill the bottle faster.</p>
+  <input id="blobSize" type="range" min="40" max="150" step="5" value="150" aria-describedby="blobSize-description">
+  <div class="range-ends"><span>Small · 40%</span><span>Large · 150%</span></div>
+ </div>
+ <div class="settings-actions"><button class="text-button" id="reset-physics">Reset to defaults</button><button class="primary" data-close>Done <svg><use href="#i-arrow"/></svg></button></div>
+ <p class="settings-note">Changes apply to your current game and future rounds.</p>
+</dialog>
+<dialog id="reset-dialog" aria-labelledby="reset-title"><h2 id="reset-title">A fresh little start?</h2><p>Your current pile will go. Your personal best stays.</p><button class="primary" id="confirm-reset">Start fresh <svg><use href="#i-reset"/></svg></button><button class="text-button" data-close>Keep my pile</button></dialog>
+<div class="landscape-note">A little more room, please.<span>Turn your phone upright to play.</span></div>
+</body></html>
