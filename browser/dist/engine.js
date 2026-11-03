@@ -2,7 +2,7 @@ import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies}
 import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
 import {refillRack,hasMatchingNeighbors} from './rack.js?v=29';
-import {bottleFor,isBottleId} from './bottles.js?v=33';
+import {bottleFor,isBottleId} from './bottles.js?v=34';
 import {eject} from './ejection.js?v=29';
 import {insertedOrder} from './preparation-gesture.js?v=29';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;

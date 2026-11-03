@@ -1,12 +1,12 @@
-import {createStartPage} from './start-page.js?v=36';
-import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=33';
+import {createStartPage} from './start-page.js?v=37';
+import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=34';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
-import {RackMotion} from './rack-motion.js?v=33';
-import {isBottleId} from './bottles.js?v=33';
+import {RackMotion} from './rack-motion.js?v=34';
+import {isBottleId} from './bottles.js?v=34';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=33';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=34';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
 import {connectAchievements} from './achievements.js?v=31';

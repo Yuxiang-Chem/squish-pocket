@@ -70,11 +70,26 @@ export function createVessel({outline,mouthEdges,floor,fillLine,joinY,version=1}
     if(!body.inBottle&&(minY>mouthBottom+1||(body.hasEntered&&maxY>mouthBottom+1&&(body.vy??0)>=0))){body.spilled=true;return true;}
     return false;
   }
+  // Each opening stops particles at its own height. The side mouths sit lower
+  // than the center neck, so one global line let chamber blobs above the fill
+  // mark slip through the center mouth and spring back in.
+  function openingY(x){
+    let best=null;
+    for(const m of mouths){
+      if(Math.abs(m.dx)<eps)continue;
+      const minX=Math.min(m.a.x,m.b.x),maxX=Math.max(m.a.x,m.b.x);
+      if(x<minX||x>maxX)continue;
+      const t=Math.max(0,Math.min(1,(x-m.a.x)/m.dx)),y=m.a.y+m.dy*t;
+      if(best===null||y>best)best=y;
+    }
+    return best;
+  }
   function bottleWalls(body,animateExterior=false){
     if(body.spilled&&!animateExterior)return;
     const entered=!body.spilled&&(body.inBottle||body.hasEntered),nodes=body.nodes;
     let votes=0,count=0,straddle=false;
-    const settled=p=>p.y>mouthBottom&&(history.get(p)?.y??p.py??p.y)>mouthBottom;
+    const gate=p=>openingY(p.x)??mouthBottom;
+    const settled=p=>p.y>gate(p)&&(history.get(p)?.y??p.py??p.y)>gate(p);
     const owned=p=>(p.bottleSide??contains(p.x,p.y))||(entered&&p.y>=floor);
     for(let i=0;i<nodes.length;i++){
       const a=nodes[i],b=nodes[(i+1)%nodes.length];if(!settled(a))continue;
@@ -82,10 +97,14 @@ export function createVessel({outline,mouthEdges,floor,fillLine,joinY,version=1}
     }
     const deep=entered&&nodes.every(p=>p.y>joinY),mostlyInside=votes*2>=count;
     const outsideMouths=Number.isFinite(body.x)&&!mouths.some(m=>body.x>=Math.min(m.a.x,m.b.x)&&body.x<=Math.max(m.a.x,m.b.x));
-    const forced=body.spilled||body.y<=mouthBottom||!(straddle||deep)?null:mostlyInside?true:outsideMouths?false:null;
+    const centerOpening=Number.isFinite(body.x)?openingY(body.x)??mouthBottom:mouthBottom;
+    const forced=body.spilled||body.y<=centerOpening||!(straddle||deep)?null:mostlyInside?true:outsideMouths?false:null;
+    // A blob whose center is still down in the chamber cannot shed particles
+    // out an opening. Releasing them is what made a full pile jump.
+    const allowRelease=!entered||!Number.isFinite(body.x)||!contains(body.x,body.y)||body.y<=centerOpening+30;
     for(const p of nodes){
       let vx=p.x-p.px,vy=p.y-p.py;
-      const pinned=forced!==null&&p.y>mouthBottom;
+      const pinned=forced!==null&&p.y>gate(p);
       let side=pinned?forced:p.bottleSide??contains(p.px,p.py);
       if(entered&&forced!==false&&contains(body.x,body.y)&&p.y>floor)side=true;
       const origin=history.get(p)??(side?{x:p.x,y:p.y}:{x:p.px,y:p.py});
@@ -98,23 +117,35 @@ export function createVessel({outline,mouthEdges,floor,fillLine,joinY,version=1}
           if(t>eps&&t<=1&&u>=0&&u<=1)hits.push({...e,t,x:origin.x+sx*t,y:origin.y+sy*t});
         }
       }
-      hits.sort((a,b)=>a.t-b.t);let hit=null;
+      hits.sort((a,b)=>a.t-b.t);let hit=null,mouthHit=null;
       for(const e of hits){
         const entering=sx*e.nx+sy*e.ny>0;
-        if(e.mouth){if(!pinned)side=entering;continue;}
+        if(e.mouth){if(!mouthHit)mouthHit=e;if(!pinned&&(allowRelease||entering))side=entering;continue;}
         if(entering!==side){hit=e;break;}
       }
       p.bottleSide=side;
       const nowInside=contains(p.x,p.y);
       if(!hit&&side===nowInside){history.set(p,{x:p.x,y:p.y});continue;}
-      const q=hit??nearest(p.x,p.y,walls),sign=side?1:-1,nx=q.nx*sign,ny=q.ny*sign;
+      const blockedMouth=!hit&&mouthHit&&side&&!allowRelease;
+      const q=hit??(blockedMouth?mouthHit:nearest(p.x,p.y,walls)),sign=side?1:-1,nx=q.nx*sign,ny=q.ny*sign;
       const closing=vx*nx+vy*ny;
-      if(closing<0){const response=-closing>.12?1.25:1;vx-=closing*response*nx;vy-=closing*response*ny;}
+      // Pulling a particle back from outside the glass is recovery, not an impact.
+      const recovering=!hit&&!contains(origin.x,origin.y,.001);
+      if(closing<0){const response=recovering||blockedMouth?1:-closing>.12?1.25:1;vx-=closing*response*nx;vy-=closing*response*ny;}
       p.x=q.x+nx*.03;p.y=q.y+ny*.03;
       // Near a lip endpoint, nudge along its wall before taking the normal.
       if(side&&!contains(p.x,p.y,.001)){
         const t=Math.max(.002,Math.min(.998,hit?((q.x-q.a.x)*q.dx+(q.y-q.a.y)*q.dy)/(q.dx*q.dx+q.dy*q.dy):q.t));
         p.x=q.a.x+q.dx*t+nx*.03;p.y=q.a.y+q.dy*t+ny*.03;
+      }
+      if(side&&!contains(p.x,p.y,.001)){
+        const anchor=contains(body.x,body.y)?body:{x:180,y:(joinY+floor)/2};
+        let lo=0,hi=1;
+        for(let i=0;i<12;i++){
+          const mid=(lo+hi)/2,x=p.x+(anchor.x-p.x)*mid,y=p.y+(anchor.y-p.y)*mid;
+          if(contains(x,y,.001))hi=mid;else lo=mid;
+        }
+        p.x+=(anchor.x-p.x)*hi;p.y+=(anchor.y-p.y)*hi;
       }
       p.px=p.x-vx*.995;p.py=p.y-vy*.995;history.set(p,{x:p.x,y:p.y});
     }
