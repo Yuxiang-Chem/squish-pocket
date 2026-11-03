@@ -4,7 +4,7 @@ import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6'
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
 import {RackMotion} from './rack-motion.js?v=33';
 import {isBottleId} from './bottles.js?v=33';
-import {pauseFootnote,readRound,rerecordFlaskRound,savedRoundReady,writeRound} from './round-record.js?v=39';
+import {displayedBest,pauseFootnote,readRound,rerecordFlaskRound,savedRoundReady,writeRound} from './round-record.js?v=40';
 
 import {DragMotion} from './drag-motion.js?v=29';
 import {HOLE,dragOutsideGlass} from './preparation.js?v=33';
@@ -31,24 +31,26 @@ let previewEngine=null,previewAccumulator=0,previewAge=0;
 const SELECTED_BOTTLE='squish-pocket-selected-bottle';
 function restoreBottle(id,restoreSound=false){
   engine=new Engine(undefined,id);started=false;paused=false;
+  let savedBest=0;
   try{
     const data=readRound(localStorage,id);
-    if(!data)return;
-    const restored=Engine.restore(data.engine);
-    if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
-    if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
-    if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
+    if(data){
+      const restored=Engine.restore(data.engine);
+      if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
+      if(Number.isSafeInteger(data.best)&&data.best>=0)savedBest=data.best;
+      if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
+    }
   }catch{/* A missing or unavailable save starts a new bottle. */}
+  best=displayedBest(id,savedBest,engine.score,0);
 }
 let selectedBottle='classic';
 try{const selected=localStorage.getItem(SELECTED_BOTTLE);if(isBottleId(selected))selectedBottle=selected;}catch{}
 try{rerecordFlaskRound(localStorage);}catch{/* A blocked store keeps whatever flask round is already there. */}
 restoreBottle(selectedBottle,true);
-best=Math.max(best,engine.score);
 highestSeen=Math.max(0,...engine.blobs.map(b=>b.level));
 rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
 const achievements=connectAchievements({getEngine:()=>engine,getBest:()=>best,cancelAim,toast});
-best=Math.max(best,achievements.profile.score);
+best=displayedBest(engine.bottleId,best,engine.score,achievements.profile.score);
 achievements.observe(engine,best);
 
 function save(){
@@ -574,7 +576,7 @@ function abandonRound(){
 }
 function enterClassic(id){
   cancelAim();if(gameMode==='classic')save();gameMode='classic';activeRoom=null;currentMatchKey='';restoreBottle(id);
-  best=Math.max(best,engine.score,achievements.profile.score);resetVisuals();
+  best=displayedBest(id,best,engine.score,achievements.profile.score);resetVisuals();
   try{localStorage.setItem(SELECTED_BOTTLE,id);}catch{}
   if(!started||engine.over)newGame();else resume();
   updateHUD();save();

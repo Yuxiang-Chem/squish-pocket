@@ -28,17 +28,30 @@ export function writeRound(storage, bottleId, data) {
   return true;
 }
 
-// Drop a previously saved flask round the first time this build runs.
-// The flag stays set so the round written afterward is kept.
+// Drop a previously saved flask round once. Flag "2" means that clear included
+// the flask's own highest score. An older "1" only deleted the pile, and the
+// shared personal best was then written back, so that visit is cleared again.
 export function rerecordFlaskRound(storage) {
   try {
-    if (storage.getItem(FLASK_RERECORD_FLAG) === '1') return false;
+    if (storage.getItem(FLASK_RERECORD_FLAG) === '2') return false;
     storage.removeItem(FLASK_ROUND_KEY);
-    storage.setItem(FLASK_RERECORD_FLAG, '1');
+    storage.setItem(FLASK_RERECORD_FLAG, '2');
     return true;
   } catch {
     return false;
   }
+}
+
+// The flask shows the best stored with its own round. The shared achievement
+// score stays on the original bottle and in the hall of fame.
+export function displayedBest(bottleId, savedBest, score, sharedBest) {
+  const own = Math.max(validScore(savedBest), validScore(score));
+  if (bottleId === 'lab-flask') return own;
+  return Math.max(own, validScore(sharedBest));
+}
+
+function validScore(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
 }
 
 export function savedRoundReady(bottleId, data) {

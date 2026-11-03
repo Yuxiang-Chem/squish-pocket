@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CLASSIC_ROUND_KEY, FLASK_RERECORD_FLAG, FLASK_ROUND_KEY, classicPlayLabel, classicSaveNote, pauseFootnote,
-  readRound, rerecordFlaskRound, roundSaveKey, savedRoundReady, writeRound
+  displayedBest, readRound, rerecordFlaskRound, roundSaveKey, savedRoundReady, writeRound
 } from '../dist/round-record.js';
 
 function memory() {
@@ -32,7 +32,7 @@ test('an existing three-neck round is cleared once, then recording resumes', () 
   assert.equal(roundSaveKey('classic'), CLASSIC_ROUND_KEY);
   assert.equal(rerecordFlaskRound(storage), true);
   assert.equal(storage.getItem(FLASK_ROUND_KEY), null);
-  assert.equal(storage.getItem(FLASK_RERECORD_FLAG), '1');
+  assert.equal(storage.getItem(FLASK_RERECORD_FLAG), '2');
   assert.deepEqual(readRound(storage, 'classic'), classicRecord);
   assert.equal(readRound(storage, 'lab-flask'), null);
 
@@ -53,6 +53,23 @@ test('an existing three-neck round is cleared once, then recording resumes', () 
   assert.match(classicSaveNote('classic', false), /keeps its own saved round/);
   assert.equal(pauseFootnote('lab-flask'), 'SAVED IN THIS BROWSER.');
   assert.equal(pauseFootnote('classic'), 'SAVED IN THIS BROWSER.');
+  assert.equal(displayedBest('lab-flask', 0, 0, 900), 0);
+  assert.equal(displayedBest('lab-flask', 12, 4, 900), 12);
+  assert.equal(displayedBest('classic', 40, 0, 900), 900);
+});
+
+test('an earlier flask clear that kept the shared best is cleared once more', () => {
+  const storage = memory();
+  storage.setItem(FLASK_RERECORD_FLAG, '1');
+  storage.setItem(FLASK_ROUND_KEY, JSON.stringify({...flaskRecord, best: 900}));
+  storage.setItem(CLASSIC_ROUND_KEY, JSON.stringify(classicRecord));
+  assert.equal(rerecordFlaskRound(storage), true);
+  assert.equal(storage.getItem(FLASK_ROUND_KEY), null);
+  assert.equal(storage.getItem(FLASK_RERECORD_FLAG), '2');
+  assert.deepEqual(readRound(storage, 'classic'), classicRecord);
+  writeRound(storage, 'lab-flask', {...flaskRecord, best: 16});
+  assert.equal(rerecordFlaskRound(storage), false);
+  assert.equal(readRound(storage, 'lab-flask').best, 16);
 });
 
 test('a finished or unstarted round is not offered as Continue', () => {
