@@ -47,6 +47,7 @@
       "d1_databases": [{
         "binding": "ACHIEVEMENTS",
         "database_name": "squish-pocket-achievements-test",
+        "database_id": "1724b1c3-701c-40ca-b6c8-61b7eb233164",
         "migrations_dir": "migrations"
       }],
       "send_email": [{"name": "EMAIL", "destination_address": "chem.xjtlu@gmail.com"}]
