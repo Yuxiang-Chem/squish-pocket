@@ -1,13 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import worker from '../api.js';
 
 // Execute the actual parameterized statements against SQLite, D1's SQL engine.
 function setup() {
   const sql = new DatabaseSync(':memory:');
-  sql.exec(readFileSync(new URL('../migrations/0001_achievements.sql', import.meta.url), 'utf8'));
+  const migrations = new URL('../migrations/', import.meta.url);
+  for (const name of readdirSync(migrations).filter(file => file.endsWith('.sql')).sort()) sql.exec(readFileSync(new URL(name, migrations), 'utf8'));
   const db = {prepare(query) {
     return {values: [], bind(...values) { this.values = values; return this; },
       async run() { const result = sql.prepare(query).run(...this.values); return {meta: {changes: result.changes}}; },
@@ -27,7 +28,7 @@ function setup() {
     }), env);
     return {status: response.status, data: await response.json()};
   }
-  const submit = (identity, score = 2048, highestTile = 2048, name = 'Squishy') => request('/api/achievements', {score, highestTile, name}, identity);
+  const submit = (identity, score = 2048, highestTile = 2048, name = 'Squishy', bottle = 'classic') => request('/api/achievements', {score, highestTile, name, bottle}, identity);
   return {env, emails, sql, player, request, submit};
 }
 
@@ -88,6 +89,34 @@ test('provider failure releases daily claim and unavailable email never claims s
   assert.equal((await t.request('/api/record-message', {message: 'Hi'}, a)).status, 502);
   t.env.EMAIL.send = send;
   assert.equal((await t.request('/api/record-message', {message: 'Retry'}, a)).status, 200);
+});
+
+test('each bottle keeps its own score, 2048 count, record holder, and daily message', async () => {
+  const t = setup(), a = t.player(), b = t.player();
+  await t.submit(a, 3000, 2048, 'Classic');
+  const flask = await t.submit(b, 5000, 1024, 'Flask', 'lab-flask');
+  assert.equal(flask.data.bottle, 'lab-flask');
+  assert.equal(flask.data.record.score, 5000);
+  assert.equal(flask.data.record.name, 'Flask');
+  assert.equal(flask.data.reached2048, 0);
+  assert.equal(flask.data.isRecordHolder, true);
+  assert.equal(flask.data.personal.score, 5000);
+  const classic = await t.request('/api/achievements?bottle=classic');
+  assert.equal(classic.data.record.score, 3000);
+  assert.equal(classic.data.record.name, 'Classic');
+  assert.equal(classic.data.reached2048, 1);
+  assert.equal((await t.request('/api/record-message', {message: 'Wrong bottle', bottle: 'lab-flask'}, a)).status, 403);
+  assert.equal((await t.request('/api/record-message', {message: 'From the flask', bottle: 'lab-flask'}, b)).status, 200);
+  assert.match(t.emails[0].text, /Three-neck flask/);
+  assert.match(t.emails[0].subject, /Three-neck flask/);
+  await t.submit(a, 9000, 4096, 'Classic');
+  assert.equal((await t.request('/api/achievements?bottle=lab-flask')).data.record.score, 5000);
+  assert.equal((await t.request('/api/achievements?bottle=classic')).data.highestTile, 4096);
+  const separate = await t.submit(a, 100, 2, 'Classic', 'lab-flask');
+  assert.equal(separate.data.personal.score, 100);
+  assert.equal((await t.submit(a, 0, 2, 'Renamed')).data.record.name, 'Renamed');
+  assert.equal((await t.request('/api/achievements?bottle=lab-flask')).data.record.name, 'Flask');
+  assert.equal((await t.submit(a, 2048, 2048, 'Nope', 'beaker')).status, 400);
 });
 
 test('rejects invalid records, oversized messages and cross-origin requests', async () => {

@@ -4,7 +4,7 @@ A soft-body physics merge game for phones. Shoot jelly blobs into a glass bottle
 
 **[Play in your browser](https://squish.chemisgreat.online/)**
 
-Choose **Classic** to play solo at your own pace, or **Multiplayer** to create or join a private two-player room with a six-character code (`GameRoom` Durable Object). Both modes let you choose the **Original bottle** or the separate **Three-neck flask** with a round body, tall central joint, and angled side necks. Each bottle saves its own Classic round; the original bottle remains the default.
+Choose **Classic** to play solo at your own pace, or **Multiplayer** to create or join a private two-player room with a six-character code (`GameRoom` Durable Object). Both modes let you choose the **Original bottle** or the separate **Three-neck flask**, with straight cylindrical necks and a larger round chamber. Each bottle saves its own Classic round and its own achievements; the original bottle remains the default.
 
 The browser version is the current playable game. A separate, earlier native iPhone prototype is included for future development; its gameplay differs from the browser version and it has not been built or installed on iOS.
 
@@ -23,7 +23,7 @@ Pull a ready blob downward to charge and release to shoot, or hold **Shoot**. Wh
 
 In **Multiplayer**, the room host chooses the bottle and starts the match. Both players receive the same random seed in separate bottles, see live score updates and an on-demand opponent bottle preview, and the higher score wins once both rounds finish (with a 30-second reconnect grace period).
 
-The crown button opens **Achievements**: the shared count of players who reach 2048, the world high score and holder, the biggest tile, and your personal records. Each browser counts once across rounds. The current high-score holder can write a message inside the game for delivery to the creator's inbox, after Cloudflare email setup. Shared records and Multiplayer rooms need the Worker API; see [local development and deployment](cloudflare/README.md).
+The crown button opens **Achievements** for the current bottle: the count of players who reach 2048 in that bottle, its world high score and holder, its biggest tile, and your personal records for that bottle. Each browser counts once per bottle across rounds. The current high-score holder can write a message inside the game for delivery to the creator's inbox, after Cloudflare email setup. Shared records and Multiplayer rooms need the Worker API; see [local development and deployment](cloudflare/README.md).
 
 ## Project layout
 

@@ -18,8 +18,38 @@ test('Reference flask has a higher vertical center neck and two angled side mout
   const center=g.mouths.find(m=>Math.abs(m.a.y-m.b.y)<.001),sides=g.mouths.filter(m=>m!==center);
   assert.ok(center);assert.ok(sides.every(m=>Math.abs(m.nx)>.25));
   assert.ok(sides.every(m=>(m.a.y+m.b.y)/2>center.a.y+25));
-  assert.ok(g.contains(180,300));assert.equal(g.contains(40,300),false);
-  assert.equal(g.contains(132,160),false);assert.equal(g.contains(228,160),false);
+  assert.ok(g.contains(180,300));assert.ok(g.contains(40,300));assert.equal(g.contains(8,300),false);
+  assert.equal(g.contains(100,110),false);assert.equal(g.contains(260,110),false);
+});
+test('Necks are straight tubes and the round chamber is larger',()=>{
+  let area=0;
+  for(let i=0;i<g.bottleOutline.length;i++){
+    const a=g.bottleOutline[i],b=g.bottleOutline[(i+1)%g.bottleOutline.length];
+    area+=a.x*b.y-b.x*a.y;
+  }
+  assert.ok(Math.abs(area)/2>76000);
+  function bore(m,depth){
+    const len=Math.hypot(m.dx,m.dy),tx=m.dx/len,ty=m.dy/len;
+    let nx=m.nx,ny=m.ny;const mid={x:(m.a.x+m.b.x)/2,y:(m.a.y+m.b.y)/2};
+    if(!g.contains(mid.x+nx*3,mid.y+ny*3)){nx=-nx;ny=-ny;}
+    const origin={x:mid.x+nx*depth,y:mid.y+ny*depth};
+    if(!g.contains(origin.x,origin.y))return null;
+    const reach=sign=>{
+      let lo=0,hi=8;while(g.contains(origin.x+tx*sign*hi,origin.y+ty*sign*hi)&&hi<240)hi+=8;
+      for(let i=0;i<24;i++){const v=(lo+hi)/2;if(g.contains(origin.x+tx*sign*v,origin.y+ty*sign*v))lo=v;else hi=v;}
+      return lo;
+    };
+    return reach(1)+reach(-1);
+  }
+  for(const m of g.mouths){
+    const width=Math.hypot(m.dx,m.dy);
+    for(const depth of [4,10,16]){
+      const measured=bore(m,depth);
+      assert.ok(measured>width-1.5&&measured<width+1.5,`bore ${measured} at ${depth} for width ${width}`);
+    }
+    const opened=bore(m,30);
+    assert.ok(opened===null||opened>=width-1.5);
+  }
 });
 test('Each real angled opening admits and releases particles across its own mouth plane',()=>{
   for(const m of g.mouths){
@@ -32,15 +62,17 @@ test('Each real angled opening admits and releases particles across its own mout
     assert.equal(p.bottleSide,false);
   }
 });
-test('Fast motion cannot jump through the central-neck walls into another neck',()=>{
-  for(const x of [85,275]){
-    const p={x:180,y:140,px:180,py:140,bottleSide:true},body={x:180,y:140,nodes:[p]};g.bottleWalls(body);
-    p.x=x;p.y=170;body.x=x;body.y=170;g.bottleWalls(body);
-    assert.ok(p.x>131&&p.x<229);assert.equal(p.bottleSide,true);assert.ok(g.contains(p.x,p.y,.001));
+test('Fast motion cannot jump through the central-neck walls',()=>{
+  const center=g.mouths.find(m=>Math.abs(m.a.y-m.b.y)<.001);
+  const left=Math.min(center.a.x,center.b.x),right=Math.max(center.a.x,center.b.x),y=center.a.y+16;
+  for(const x of [30,330]){
+    const p={x:180,y,px:180,py:y,bottleSide:true},body={x:180,y,nodes:[p]};g.bottleWalls(body);
+    p.x=x;p.y=y;body.x=x;body.y=y;g.bottleWalls(body);
+    assert.ok(p.x>left-1&&p.x<right+1);assert.equal(p.bottleSide,true);assert.ok(g.contains(p.x,p.y,.001));
   }
 });
 test('Side approaches are not marked as spills before reaching the lower side openings',()=>{
-  const body={x:84,y:119,vy:100,nodes:[{x:82,y:116},{x:86,y:116},{x:86,y:122},{x:82,y:122}]};
+  const body={x:78,y:96,vy:100,nodes:[{x:74,y:92},{x:82,y:92},{x:82,y:100},{x:74,y:100}]};
   assert.equal(g.updateBottleState(body),false);assert.equal(body.inBottle,false);
 });
 test('All incoming values enter the lab flask from each slot at gentle, medium and full force',()=>{

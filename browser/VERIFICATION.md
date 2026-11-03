@@ -1,5 +1,11 @@
 # Verification
 
+Three-neck flask volume and per-bottle achievements (2026-11-03):
+
+- All **136 Node browser tests** and **12 Cloudflare achievement/room tests** pass.
+- The flask necks are straight cylinders (center bore 84, side bores 68) that flare on a tangent into the round chamber instead of pinching or meeting it at a welded corner. Interior area is about 80,700, up from about 58,200. Shoulder glass between the necks still blocks crossings. The 45-case entry matrix still passes.
+- Achievements, world records, and record-holder messages are stored per bottle. A flask score does not move the original bottle’s record, and each bottle allows its own daily message. Existing shared rows stay on the original bottle.
+
 Multiplayer rooms and start-page mode selector (2026-11-03):
 
 - All **135 Node browser tests** and **11 Cloudflare room/achievement tests** pass (`npm test` in `browser/` and `cloudflare/`), plus the 4 Durable Object runtime tests in `cloudflare/runtime-tests/rooms.test.js`.

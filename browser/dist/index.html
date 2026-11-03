@@ -6,7 +6,7 @@
   <meta name="description" content="A pocketful of possibility. Aim, drop, and merge squishy little blobs in a relaxing physics game, made for your phone.">
   <title>Squish Pocket — a little room to play</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=36"><script type="module" src="app.js?v=36"></script>
+  <link rel="stylesheet" href="style.css?v=36"><script type="module" src="app.js?v=37"></script>
 </head>
 <body>
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -38,7 +38,7 @@
   <button id="mode-back" class="menu-back" type="button">← Choose a mode</button><span id="mode-eyebrow" class="eyebrow">MAKE A LITTLE ROOM</span><h1 id="mode-title">Classic</h1><p id="mode-description" class="menu-intro"></p>
   <div id="bottle-options"><h2 class="selection-title">Choose your bottle</h2><div class="bottle-cards" role="group" aria-label="Choose bottle">
    <button class="bottle-card" data-bottle="classic" aria-pressed="true"><canvas id="menu-bottle-classic" width="180" height="210" aria-hidden="true"></canvas><span><strong>Original bottle</strong><small>A familiar little opening.</small></span><i aria-hidden="true">✓</i></button>
-   <button class="bottle-card" data-bottle="lab-flask" aria-pressed="false"><canvas id="menu-bottle-flask" width="180" height="210" aria-hidden="true"></canvas><span><strong>Three-neck flask</strong><small>A little laboratory experiment.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="lab-flask" aria-pressed="false"><canvas id="menu-bottle-flask" width="180" height="210" aria-hidden="true"></canvas><span><strong>Three-neck flask</strong><small>Straight necks, a larger round chamber.</small></span><i aria-hidden="true">✓</i></button>
   </div></div>
   <div id="classic-actions"><button id="classic-play" class="primary">Play Classic <span class="blob-caption" aria-hidden="true">•ᴗ•</span></button><p id="classic-save-note" class="menu-footnote">Each bottle keeps its own saved round.</p></div>
   <section id="multiplayer-setup" class="hidden">
@@ -118,21 +118,21 @@
  <button class="icon-button close-dialog" data-close aria-label="Close achievements"><svg><use href="#i-close"/></svg></button>
  <span class="eyebrow">LITTLE MERGES. BIG MOMENTS.</span>
  <h2 id="achievements-title">A little hall of fame.</h2>
- <p class="achievement-intro">Every 2048 starts with a tiny two.</p>
- <div class="achievement-card achievement-club"><span class="achievement-badge" aria-hidden="true">2048</span><div><strong id="achievement-count">—</strong><span id="achievement-count-label">players have reached 2048</span></div></div>
- <div class="achievement-card achievement-world"><span class="label">WORLD HIGH SCORE</span><strong id="achievement-record">—</strong><span id="achievement-holder">A little room for a new record</span><span>Biggest merge anywhere: <b id="achievement-global-tile">—</b></span></div>
+ <p class="achievement-intro" id="achievement-intro">Every 2048 starts with a tiny two. This board is the Original bottle.</p>
+ <div class="achievement-card achievement-club"><span class="achievement-badge" aria-hidden="true">2048</span><div><strong id="achievement-count">—</strong><span id="achievement-count-label">players have reached 2048 in this bottle</span></div></div>
+ <div class="achievement-card achievement-world"><span class="label">WORLD HIGH SCORE</span><span id="achievement-bottle">Original bottle</span><strong id="achievement-record">—</strong><span id="achievement-holder">A little room for a new record</span><span>Biggest merge in this bottle: <b id="achievement-global-tile">—</b></span></div>
  <div class="achievement-personal"><span id="achievement-milestone">Your next little milestone: 2048</span><div><span>YOUR BIGGEST MERGE <b id="achievement-personal-tile">2</b></span><span>YOUR BEST SCORE <b id="achievement-personal-score">0</b></span></div></div>
  <form id="achievement-name-form"><label for="achievement-name">Your name on the board</label><div class="achievement-name-row"><input id="achievement-name" maxlength="32" required autocomplete="nickname" placeholder="A squishy friend"><button class="small-button" type="submit">Save name</button></div></form>
  <div class="achievement-sync"><p id="achievement-status" role="status" aria-live="polite">Connecting to shared records…</p><button class="text-button" id="achievement-refresh" type="button">Refresh</button></div>
- <div class="record-message-section"><h3>A note from the top.</h3><p id="record-message-locked">Hold the world high score to unlock a message to the creator. Equal scores keep the first record holder.</p>
+ <div class="record-message-section"><h3>A note from the top.</h3><p id="record-message-locked">Hold this bottle’s world high score to unlock a message to the creator. Equal scores keep the first record holder.</p>
  <form id="record-message-form" class="hidden">
-  <p>You’re the record holder! Leave the creator a little message.</p>
+  <p>You’re the record holder for this bottle! Leave the creator a little message.</p>
   <label for="record-message">Your message</label><textarea id="record-message" rows="4" maxlength="2000" required placeholder="A little victory, a suggestion, or just hello…"></textarea>
   <label for="record-reply">Your email <span>(optional, for a reply)</span></label><input id="record-reply" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com">
   <p id="record-email-note"></p><button id="record-send" class="primary" type="submit">Send to the creator <svg><use href="#i-arrow"/></svg></button>
   <p id="record-message-status" role="status" aria-live="polite"></p>
  </form></div>
- <p class="achievement-footnote">One player per browser. Reaching 2048 in the bottle or the ready row counts once, even across rounds. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.</p>
+ <p class="achievement-footnote">One player per browser, and one board per bottle. Reaching 2048 counts once for that bottle, even across rounds. The other bottle keeps its own score, tile, and world record. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.</p>
 </dialog>
 <dialog id="guide" aria-labelledby="guide-title">
  <button class="icon-button close-dialog" data-close aria-label="Close guide"><svg><use href="#i-close"/></svg></button>
