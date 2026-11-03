@@ -1,6 +1,7 @@
 import {BOTTLES} from './bottles.js?v=33';
 import {radiusFor} from './engine.js?v=33';
 import {RoomClient} from './room-client.js?v=34';
+import {classicPlayLabel,classicSaveNote} from './round-record.js?v=38';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
 const blobCaption='<span class="blob-caption" aria-hidden="true">•ᴗ•</span>';
@@ -39,8 +40,8 @@ export function createStartPage(hooks){
       button.disabled=!!room&&(!connected||room.you!==0||!['lobby','finished'].includes(room.phase));
     }
     const saved=hooks.classicStatus(bottleId);
-    setPrimaryLabel('classic-play',saved?'Continue Classic':'Play Classic');
-    $('classic-save-note').textContent=saved?'Your saved pile is ready. The other bottle’s round stays saved too.':'Each bottle keeps its own saved round.';
+    setPrimaryLabel('classic-play',classicPlayLabel(bottleId,saved));
+    $('classic-save-note').textContent=classicSaveNote(bottleId,saved);
   }
   function showSetup(selected){
     mode=selected;$('menu-status').textContent='';

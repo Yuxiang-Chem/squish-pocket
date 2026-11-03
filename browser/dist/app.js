@@ -1,9 +1,10 @@
-import {createStartPage} from './start-page.js?v=36';
+import {createStartPage} from './start-page.js?v=38';
 import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=33';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
 import {RackMotion} from './rack-motion.js?v=33';
 import {isBottleId} from './bottles.js?v=33';
+import {forgetRetiredRounds,pauseFootnote,readRound,roundSaveKey,savedRoundReady,writeRound} from './round-record.js?v=38';
 
 import {DragMotion} from './drag-motion.js?v=29';
 import {HOLE,dragOutsideGlass} from './preparation.js?v=33';
@@ -27,18 +28,20 @@ const dragMotion=new DragMotion(reducedMotion);
 const dragCanvas=document.createElement('canvas'),dragCtx=dragCanvas.getContext('2d');
 dragCanvas.className='prep-drag-layer';dragCanvas.setAttribute('aria-hidden','true');document.body.append(dragCanvas);
 let previewEngine=null,previewAccumulator=0,previewAge=0;
-const KEY='squish-pocket-v1',SELECTED_BOTTLE='squish-pocket-selected-bottle';
-const saveKey=id=>id==='classic'?KEY:`${KEY}:${id}`;
+const SELECTED_BOTTLE='squish-pocket-selected-bottle';
 function restoreBottle(id,restoreSound=false){
   engine=new Engine(undefined,id);started=false;paused=false;
   try{
-    const data=JSON.parse(localStorage.getItem(saveKey(id)));
-    if(data?.version===1){
+    forgetRetiredRounds(localStorage);
+    // The flask keeps no round of its own. Its visit still shows the original bottle's best.
+    const data=readRound(localStorage,roundSaveKey(id)?id:'classic');
+    if(!data)return;
+    if(roundSaveKey(id)){
       const restored=Engine.restore(data.engine);
       if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
-      if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
-      if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
     }
+    if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
+    if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
   }catch{/* A missing or unavailable save starts a new bottle. */}
 }
 let selectedBottle='classic';
@@ -54,8 +57,9 @@ achievements.observe(engine,best);
 function save(){
   achievements.observe(engine,best);
   try{
+    forgetRetiredRounds(localStorage);
     const data={version:1,physicsDefaultsVersion:PHYSICS_DEFAULTS_VERSION,engine,started,best,sound};
-    if(gameMode==='classic')localStorage.setItem(saveKey(engine.bottleId),JSON.stringify(data));
+    if(gameMode==='classic')writeRound(localStorage,engine.bottleId,data);
     else if(activeRoom&&currentMatchKey===`${activeRoom.code}:${activeRoom.round}`)localStorage.setItem(`squish-pocket-match:${currentMatchKey}`,JSON.stringify({...data,round:activeRoom.round,seed:activeRoom.seed}));
   }
   catch{if(!storageWarning){toast('Browser saving is unavailable');storageWarning=true;}}
@@ -111,7 +115,7 @@ function resume(){paused=false;overlay.classList.add('hidden');accumulator=0;unl
 function pauseGame(){
   if(!started||engine.over)return;
   paused=true;cancelAim();save();updateHUD();
-  showOverlay({kicker:'A MOMENT TO YOURSELF',title:'Take a breather.',description:'Your little pile will be here.',button:'Keep squishing',action:resume,footnote:'SAVED IN THIS BROWSER.',friends:true,stats:true});
+  showOverlay({kicker:'A MOMENT TO YOURSELF',title:'Take a breather.',description:'Your little pile will be here.',button:'Keep squishing',action:resume,footnote:pauseFootnote(engine.bottleId),friends:true,stats:true});
 }
 function showMatchOverlay(){
   if(activeRoom?.phase==='finished'){
@@ -611,7 +615,7 @@ function updateMatch(room,connected){
 }
 shell=createStartPage({
   initialBottle:engine.bottleId,profile:achievements.profile,cancelAim,showSavedState,
-  classicStatus:id=>{try{const data=JSON.parse(localStorage.getItem(saveKey(id)));return data?.started===true&&!data.engine?.over;}catch{return false;}},
+  classicStatus:id=>{try{return savedRoundReady(id,readRound(localStorage,id));}catch{return false;}},
   onPage:next=>{page=next;dragCanvas.style.display=page==='game'?'':'none';},
   onShown:()=>{fitJar();resize();updateHUD();},
   suspend:()=>{cancelAim();paused=started;save();updateHUD();},

@@ -6,7 +6,7 @@
   <meta name="description" content="A pocketful of possibility. Aim, drop, and merge squishy little blobs in a relaxing physics game, made for your phone.">
   <title>Squish Pocket — a little room to play</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=36"><script type="module" src="app.js?v=36"></script>
+  <link rel="stylesheet" href="style.css?v=36"><script type="module" src="app.js?v=38"></script>
 </head>
 <body>
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -32,7 +32,7 @@
   <div class="mode-cards">
    <button id="mode-classic" class="mode-card"><span class="mode-number">01 / YOUR OWN PACE</span><h2>Classic</h2><p>Pick a bottle. Build a little pile.<br>Come back whenever you like.</p><span class="mode-link">Play solo <span class="blob-caption" aria-hidden="true">•ᴗ•</span></span></button>
    <button id="mode-multiplayer" class="mode-card mode-card-multi"><span class="mode-number">02 / A FRIENDLY RIVALRY</span><h2>Multiplayer</h2><p>Two bottles. The same little start.<br>Invite a friend with a private room code.</p><span class="mode-link">Create or join a room <span class="blob-caption" aria-hidden="true">•ᴗ•</span></span></button>
-  </div><p class="menu-footnote">Your Classic rounds stay saved in this browser.</p>
+  </div><p class="menu-footnote">Your original-bottle round stays saved in this browser.</p>
  </section>
  <section id="mode-setup" class="mode-setup hidden" aria-labelledby="mode-title">
   <button id="mode-back" class="menu-back" type="button">← Choose a mode</button><span id="mode-eyebrow" class="eyebrow">MAKE A LITTLE ROOM</span><h1 id="mode-title">Classic</h1><p id="mode-description" class="menu-intro"></p>
@@ -40,7 +40,7 @@
    <button class="bottle-card" data-bottle="classic" aria-pressed="true"><canvas id="menu-bottle-classic" width="180" height="210" aria-hidden="true"></canvas><span><strong>Original bottle</strong><small>A familiar little opening.</small></span><i aria-hidden="true">✓</i></button>
    <button class="bottle-card" data-bottle="lab-flask" aria-pressed="false"><canvas id="menu-bottle-flask" width="180" height="210" aria-hidden="true"></canvas><span><strong>Three-neck flask</strong><small>A little laboratory experiment.</small></span><i aria-hidden="true">✓</i></button>
   </div></div>
-  <div id="classic-actions"><button id="classic-play" class="primary">Play Classic <span class="blob-caption" aria-hidden="true">•ᴗ•</span></button><p id="classic-save-note" class="menu-footnote">Each bottle keeps its own saved round.</p></div>
+  <div id="classic-actions"><button id="classic-play" class="primary">Play Classic <span class="blob-caption" aria-hidden="true">•ᴗ•</span></button><p id="classic-save-note" class="menu-footnote">The original bottle keeps its round in this browser.</p></div>
   <section id="multiplayer-setup" class="hidden">
    <div id="room-forms"><label class="menu-label" for="room-name">Your name <span>(optional)</span></label><input id="room-name" class="menu-input" maxlength="24" autocomplete="nickname" placeholder="A squishy friend">
     <button id="room-create" class="primary">Create a private room <span class="blob-caption" aria-hidden="true">•ᴗ•</span></button><div class="join-divider"><span>or join a friend</span></div>
@@ -141,7 +141,7 @@
  <div class="guide-row"><span>02</span><div><h3>Choose your force</h3><p>Pull any ready blob downward, straight or diagonally toward the bottle, to build force; the aiming arrow appears as soon as it starts charging. Release to shoot it from its own place in the row; it does not jump to the middle first. Choose Original bottle for the wide opening, or Three-neck flask for the laboratory shape. In the flask, aim through a neck; glass between the necks can bounce a shot or cause a spill. Side blobs can aim widely toward the far side but only gently toward their nearer rim. Pull farther for more force; pull back to the starting height or cancel the gesture to stop. A lifting gesture stays in preparation mode even when you lower it again. You can also hold Shoot to charge up: slide your finger up for more force or down for less, and left or right to turn the arrow, then release to fire the selected blob. Slide down to 0% and release to cancel. Shoot stays ready while other blobs move or refill; you can also grab another ready blob before its previous movement finishes. A quick press is gentle; a longer hold is stronger. You can also drag inside the glass to aim: drag farther for more force and release to shoot. Dragging a ready blob cannot place it inside the bottle. Keyboard: left/right aim, up/down choose force, Space shoots.</p></div></div>
  <div class="guide-row"><span>03</span><div><h3>More little friends</h3><p>New blobs shoot in from the left or right with values 2, 4, 8, 16, or 32. They bump, push, and squash against the other ready blobs. Matching neighbors merge on contact. Stiffness and viscosity are fixed for everyone. Refill continues until three are ready. Merges in the pile earn points.</p></div></div>
  <div class="guide-row"><span>04</span><div><h3>Mind the dotted line</h3><p>A partially spilled blob stays in play while any part is inside. The round ends only once the whole blob slides out; you can watch it fall before the result appears. The dotted line is a capacity guide. Lifting and rearranging never shoot. Downward pulls launch only on release.</p></div></div>
- <p class="guide-footer">Your game saves in this browser. On iPhone, use Safari’s Share menu → Add to Home Screen for an app-like view.</p>
+ <p class="guide-footer">The original bottle saves in this browser. The three-neck flask starts fresh. On iPhone, use Safari’s Share menu → Add to Home Screen for an app-like view.</p>
  <button class="primary" data-close>Got it. Let’s play <svg><use href="#i-arrow"/></svg></button>
 </dialog>
 <dialog id="settings-dialog" aria-labelledby="settings-title">
