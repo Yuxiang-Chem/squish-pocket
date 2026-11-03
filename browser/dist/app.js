@@ -1,13 +1,15 @@
-import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=29';
+import {createStartPage} from './start-page.js?v=36';
+import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=33';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
-import {DEFAULT_PHYSICS,PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=29';
-import {RackMotion} from './rack-motion.js?v=29';
-import {drawBottleBack,drawBottleFront,bottleLeftAt,insideBottle,BOTTLE_MOUTH,FILL_LINE,BOTTLE_FLOOR} from './bottle.js?v=29';
+import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
+import {RackMotion} from './rack-motion.js?v=33';
+import {isBottleId} from './bottles.js?v=33';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=29';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=33';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
+import {connectAchievements} from './achievements.js?v=31';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
@@ -15,6 +17,7 @@ const canvas=$('canvas'),ctx=canvas.getContext('2d'),overlay=$('overlay');
 installShootTouchGuard($('shoot'));
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 setReducedMergeMotion(reducedMotion);
+let page='menu',gameMode='classic',activeRoom=null,roomConnected=false,currentMatchKey='',shownResult='',shell;
 let engine=new Engine(),started=false,paused=false,aimAngle=0,power=.25,pointer=null,aimCancelled=false,keyboardAiming=false;
 let particles=[],rackRings=[],rackSparks=[],lastTime=performance.now(),accumulator=0,saveElapsed=0,best=0,sound=true,audio=null,lastSound=0;
 let spillReveal=0,endedShown=false,highestSeen=0,storageWarning=false,toastTimer;
@@ -24,23 +27,37 @@ const dragMotion=new DragMotion(reducedMotion);
 const dragCanvas=document.createElement('canvas'),dragCtx=dragCanvas.getContext('2d');
 dragCanvas.className='prep-drag-layer';dragCanvas.setAttribute('aria-hidden','true');document.body.append(dragCanvas);
 let previewEngine=null,previewAccumulator=0,previewAge=0;
-const KEY='squish-pocket-v1';
-
-try{
-  const save=JSON.parse(localStorage.getItem(KEY));
-  if(save?.version===1){
-    const restored=Engine.restore(save.engine);
-    if(restored){engine=restored;engine.setPhysics(playerPhysics(engine.physics,save.physicsDefaultsVersion));started=save.started===true;paused=started;}
-    if(Number.isSafeInteger(save.best)&&save.best>=0)best=save.best;
-    if(typeof save.sound==='boolean')sound=save.sound;
-  }
-}catch{/* Unavailable storage or an old save starts a fresh, playable game. */}
+const KEY='squish-pocket-v1',SELECTED_BOTTLE='squish-pocket-selected-bottle';
+const saveKey=id=>id==='classic'?KEY:`${KEY}:${id}`;
+function restoreBottle(id,restoreSound=false){
+  engine=new Engine(undefined,id);started=false;paused=false;
+  try{
+    const data=JSON.parse(localStorage.getItem(saveKey(id)));
+    if(data?.version===1){
+      const restored=Engine.restore(data.engine);
+      if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
+      if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
+      if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
+    }
+  }catch{/* A missing or unavailable save starts a new bottle. */}
+}
+let selectedBottle='classic';
+try{const selected=localStorage.getItem(SELECTED_BOTTLE);if(isBottleId(selected))selectedBottle=selected;}catch{}
+restoreBottle(selectedBottle,true);
 best=Math.max(best,engine.score);
 highestSeen=Math.max(0,...engine.blobs.map(b=>b.level));
-rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
+rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
+const achievements=connectAchievements({getEngine:()=>engine,getBest:()=>best,cancelAim,toast});
+best=Math.max(best,achievements.profile.score);
+achievements.observe(engine,best);
 
 function save(){
-  try{localStorage.setItem(KEY,JSON.stringify({version:1,physicsDefaultsVersion:PHYSICS_DEFAULTS_VERSION,engine,started,best,sound}));}
+  achievements.observe(engine,best);
+  try{
+    const data={version:1,physicsDefaultsVersion:PHYSICS_DEFAULTS_VERSION,engine,started,best,sound};
+    if(gameMode==='classic')localStorage.setItem(saveKey(engine.bottleId),JSON.stringify(data));
+    else if(activeRoom&&currentMatchKey===`${activeRoom.code}:${activeRoom.round}`)localStorage.setItem(`squish-pocket-match:${currentMatchKey}`,JSON.stringify({...data,round:activeRoom.round,seed:activeRoom.seed}));
+  }
   catch{if(!storageWarning){toast('Browser saving is unavailable');storageWarning=true;}}
 }
 function toast(message){
@@ -68,12 +85,13 @@ function cancelAim(){
   if(oldPointer!==null)for(const target of [canvas,$('shoot')])if(target.hasPointerCapture(oldPointer))target.releasePointerCapture(oldPointer);
 }
 function modalOpen(){return !!document.querySelector('dialog[open]');}
-function playable(){return started&&!paused&&!engine.over&&!modalOpen();}
+function playable(){return page==='game'&&started&&!paused&&!engine.over&&!modalOpen()&&(gameMode==='classic'||(roomConnected&&activeRoom?.phase==='playing'&&activeRoom.players[activeRoom.you]?.status==='playing'));}
 
 function showOverlay({kicker,title,description,button,action,secondary,secondaryAction,footnote,friends=false,stats=false}){
   cancelAim();overlay.classList.remove('hidden');
   overlay.querySelector('.intro-friends').classList.toggle('hidden',!friends);
   $('round-stats').classList.toggle('hidden',!stats);
+  if(stats)void achievements.sync(true);
   $('overlay-kicker').textContent=kicker;$('overlay-title').innerHTML=title;
   $('overlay-description').textContent=description;$('start').querySelector('span').textContent=button;
   $('start').onclick=action;$('secondary').classList.toggle('hidden',!secondary);
@@ -81,8 +99,10 @@ function showOverlay({kicker,title,description,button,action,secondary,secondary
   $('overlay-footnote').textContent=footnote??'';
 }
 function newGame(){
+  if(gameMode!=='classic')return;
+  achievements.observe(engine,best);
   const physics=engine.physics;
-  engine=new Engine();engine.setPhysics(physics);started=true;paused=false;endedShown=false;spillReveal=0;highestSeen=0;
+  engine=new Engine(undefined,engine.bottleId);engine.setPhysics(physics);started=true;paused=false;endedShown=false;spillReveal=0;highestSeen=0;
   particles=[];rackRings=[];rackSparks=[];aimAngle=0;cancelAim();accumulator=0;
   rackMotion.reset([]);rackMotion.play(engine.rackEvents,engine.rackOrder());
   overlay.classList.add('hidden');unlockAudio();updateHUD();save();canvas.focus({preventScroll:true});
@@ -93,8 +113,17 @@ function pauseGame(){
   paused=true;cancelAim();save();updateHUD();
   showOverlay({kicker:'A MOMENT TO YOURSELF',title:'Take a breather.',description:'Your little pile will be here.',button:'Keep squishing',action:resume,footnote:'SAVED IN THIS BROWSER.',friends:true,stats:true});
 }
+function showMatchOverlay(){
+  if(activeRoom?.phase==='finished'){
+    shownResult=`${activeRoom.code}:${activeRoom.round}`;
+    showOverlay({kicker:'MATCH COMPLETE',title:'A lovely little match.',description:shell.resultTitle(activeRoom),button:'Back to the room',action:()=>shell.showRoom(),friends:true,stats:true});
+    return;
+  }
+  showOverlay({kicker:'YOUR ROUND IS COMPLETE',title:engine.endReason==='spill'?'A little spill.':'A lovely little pile.',description:'Your score is saved for this match. Check your friend’s progress in the room.',button:'View match',action:()=>shell.showRoom(),friends:true,stats:true});
+}
 function finish(){
   if(endedShown)return;endedShown=true;cancelAim();best=Math.max(best,engine.score);save();updateHUD();
+  if(gameMode==='multiplayer'){shell.publish();showMatchOverlay();return;}
   const spilled=engine.endReason==='spill';
   showOverlay({kicker:spilled?'OUTSIDE THE BOTTLE':engine.score>0&&engine.score>=best?'A NEW PERSONAL BEST':'A LOVELY LITTLE PILE',title:spilled?'A little spill.':'Full of feelings.',description:spilled?'Game over — a blob fell outside the bottle.':`${engine.shots} little drops`,button:'One more round',action:newGame,footnote:'THERE’S ALWAYS ROOM FOR A FRESH START.',friends:true,stats:true});
 }
@@ -126,6 +155,7 @@ function updateHUD(){
     button.title=`Choose ${2**(item.level+1)} to shoot`;
   });
   updateShootAvailability();
+  $('restart').classList.toggle('hidden',gameMode==='multiplayer');
   $('pause').disabled=!started||engine.over;
   $('pause').setAttribute('aria-label',paused?'Resume game':'Pause game');
   $('pause').querySelector('use').setAttribute('href',paused?'#i-play':'#i-pause');
@@ -133,7 +163,7 @@ function updateHUD(){
   $('sound').setAttribute('aria-pressed',String(sound));
   $('sound').querySelector('use').setAttribute('href',sound?'#i-sound':'#i-muted');
   updateAimUI();
-  canvas.setAttribute('aria-label',`Blob jar. Three ready blobs: ${engine.rackOrder().map(b=>2**(b.level+1)).join(', ')}. Selected ${2**(engine.current+1)}. Use 1, 2, 3 to select a blob, left and right to aim, up and down for force, space to shoot.`);
+  canvas.setAttribute('aria-label',`${engine.vessel.name}. Three ready blobs: ${engine.rackOrder().map(b=>2**(b.level+1)).join(', ')}. Selected ${2**(engine.current+1)}. Aim through the opening. Use 1, 2, 3 to select a blob, left and right to aim, up and down for force, space to shoot.`);
 }
 function chooseSlot(index){
   if(!playable()||pointer!==null||rackGesture)return;
@@ -156,7 +186,7 @@ function positionChoice(item,i){
 function updateAimUI(){
   $('power-fill').style.width=`${Math.max(4,power*100)}%`;
   $('shoot').textContent=fireGesture?(fireGesture.manual&&power<=0?'Release to cancel':`Release · ${Math.round(power*100)}%`):'Hold to shoot ↓';
-  if(engine.over){$('hint').textContent=engine.endReason==='spill'?'GAME OVER · A BLOB FELL OUTSIDE':'ROUND OVER · ONE MORE ROUND?';return;}
+  if(engine.over){$('hint').textContent=gameMode==='multiplayer'?'ROUND COMPLETE · CHECK THE ROOM':engine.endReason==='spill'?'GAME OVER · A BLOB FELL OUTSIDE':'ROUND OVER · ONE MORE ROUND?';return;}
   if(rackGesture?.mode==='charge'){
     $('hint').textContent=aimCancelled?'PULL FARTHER DOWN TO CHARGE · RETURN UP TO CANCEL':`FORCE ${Math.round(power*100)}% · RELEASE TO SHOOT`;
   }else if(rackGesture?.mode==='drag'){
@@ -201,7 +231,7 @@ function pointerDown(event){
   const requested=event.target.closest?.('.rack-choice')?.dataset.blobId;
   if(rackMotion.busy)rackMotion.interrupt(engine.rackOrder());
   const p=localPoint(event),item=requested?rackMotion.visual.get(Number(requested)):hitReady(p);
-  if(!item&&!(p.y>BOTTLE_MOUTH&&insideBottle(p.x,p.y)))return;
+  if(!item&&!(p.y>engine.vessel.BOTTLE_MOUTH&&engine.vessel.insideBottle(p.x,p.y)))return;
   event.preventDefault();unlockAudio();pointer=event.pointerId;keyboardAiming=false;
   if(item){
     rackGesture={mode:'pending',id:item.id,startX:p.x,startY:p.y,x:item.x,y:item.y,home:{x:item.x,y:item.y},anchors:engine.rack.map(b=>rackMotion.rest.get(b.id)?.x??rackMotion.visual.get(b.id).x),lifted:false,dropIndex:null,blocked:false};
@@ -218,7 +248,7 @@ function updatePointer(event){
   if(aimGesture){
     aimAngle=aimFromPoint(p.x,p.y,launchPoint()).angle;
     power=Math.min(1,Math.hypot(p.x-aimGesture.startX,p.y-aimGesture.startY)/198);
-    aimCancelled=p.y<BOTTLE_MOUTH;updateAimUI();return;
+    aimCancelled=p.y<engine.vessel.BOTTLE_MOUTH;updateAimUI();return;
   }
   if(!rackGesture)return;
   const g=rackGesture,item=rackMotion.visual.get(g.id);if(!item)return;
@@ -237,7 +267,7 @@ function updatePointer(event){
   const neighbor=engine.rack[g.dropIndex];
   g.mergeTarget=!!neighbor&&neighbor.id!==g.id&&neighbor.level===item.level;
   rackMotion.previewInsertion(g.id,g.mergeTarget?null:g.dropIndex);
-  const target=dragOutsideGlass({x:g.x,y:g.y},p,item.body.renderRadius);
+  const target=dragOutsideGlass({x:g.x,y:g.y},p,item.body.renderRadius,engine.vessel);
   g.x=target.x;g.y=target.y;g.blocked=target.blocked;
   dragMotion.move(g.x,g.y,event.timeStamp);rackMotion.hold(g.id,g.x,g.y);
   if(!resolvePreparationContacts())updateAimUI();
@@ -303,7 +333,7 @@ $('shoot').addEventListener('pointercancel',event=>{if(event.pointerId===pointer
 $('shoot').addEventListener('lostpointercapture',event=>{if(fireGesture&&event.pointerId===pointer){cancelAim();updateHUD();}});
 $('shoot').onclick=event=>{if(event.detail===0)shoot();};
 document.addEventListener('keydown',event=>{
-  if(modalOpen())return;
+  if(page!=='game'||modalOpen()||event.target?.closest?.('input,select,textarea'))return;
   if(event.code==='Escape'){if(playable())pauseGame();else if(started&&!engine.over)resume();return;}
   if(!playable()||event.target instanceof HTMLButtonElement)return;
   if(['Digit1','Digit2','Digit3'].includes(event.code)){event.preventDefault();chooseSlot(Number(event.code.at(-1))-1);return;}
@@ -320,6 +350,7 @@ document.addEventListener('keydown',event=>{
 $('pause').onclick=()=>paused?resume():pauseGame();
 $('sound').onclick=()=>{sound=!sound;unlockAudio();updateHUD();save();if(sound)pop(1);};
 $('restart').onclick=()=>{
+  if(gameMode!=='classic')return;
   if(!started||engine.over||engine.shots===0)newGame();else {cancelAim();$('reset-dialog').showModal();}
 };
 $('confirm-reset').onclick=()=>{$('reset-dialog').close();newGame();};
@@ -332,14 +363,9 @@ function updatePhysicsUI(){
 }
 function resetPreview(){
   previewEngine=new Engine(345);previewEngine.setPhysics(engine.physics);
-  previewEngine.blobs=[blob(5,125,BOTTLE_FLOOR-178+previewEngine.radius(5)+8,150,70)];previewAccumulator=0;previewAge=0;
+  previewEngine.blobs=[blob(5,125,engine.vessel.BOTTLE_FLOOR-178+previewEngine.radius(5)+8,150,70)];previewAccumulator=0;previewAge=0;
 }
 $('settings').onclick=()=>{cancelAim();updatePhysicsUI();resetPreview();$('settings-dialog').showModal();};
-for(const name of ['stiffness','viscosity'])$(name).addEventListener('input',()=>{
-  engine.setPhysics(playerPhysics({...engine.physics,[name]:Number($(name).value)},PHYSICS_DEFAULTS_VERSION));
-  previewEngine?.setPhysics(engine.physics);updatePhysicsUI();save();
-});
-$('reset-physics').onclick=()=>{engine.setPhysics(DEFAULT_PHYSICS);updatePhysicsUI();resetPreview();save();};
 $('preview-drop').onclick=resetPreview;
 document.querySelectorAll('[data-close]').forEach(button=>button.onclick=()=>button.closest('dialog').close());
 document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',()=>{lastTime=performance.now();accumulator=0;}));
@@ -448,30 +474,31 @@ function drawAimGuide(){
 function draw(elapsed=1/60){
   ctx.clearRect(0,0,WIDTH,HEIGHT);
   prepareOuterCanvas();
-  drawBottleBack(ctx);
+  engine.vessel.drawBottleBack(ctx);
   ctx.fillStyle='#6c968510';
-  for(let x=38;x<WIDTH-25;x+=22)for(let y=236;y<HEIGHT-28;y+=22){ctx.beginPath();ctx.arc(x,y,.65,0,Math.PI*2);ctx.fill();}
+  for(let x=38;x<WIDTH-25;x+=22)for(let y=236;y<HEIGHT-28;y+=22)if(engine.vessel.insideBottle(x,y)){ctx.beginPath();ctx.arc(x,y,.65,0,Math.PI*2);ctx.fill();}
   const danger=Math.max(0,...engine.blobs.map(b=>b.danger));
-  ctx.beginPath();ctx.moveTo(bottleLeftAt(FILL_LINE)+10,FILL_LINE);ctx.lineTo(WIDTH-bottleLeftAt(FILL_LINE)-10,FILL_LINE);ctx.setLineDash([3,6]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(engine.vessel.bottleLeftAt(engine.vessel.FILL_LINE)+10,engine.vessel.FILL_LINE);ctx.lineTo(WIDTH-engine.vessel.bottleLeftAt(engine.vessel.FILL_LINE)-10,engine.vessel.FILL_LINE);ctx.setLineDash([3,6]);ctx.lineWidth=1;
   ctx.strokeStyle=danger>0?'#cf725dd9':'#98a08566';ctx.stroke();ctx.setLineDash([]);
   ctx.font='600 7px "DM Sans", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillStyle=danger>0?'#cf725d':'#9fa58e';ctx.fillText(danger>0?'MAKE A LITTLE ROOM':'A LITTLE ROOM TO GROW',WIDTH/2,FILL_LINE+14);
-  for(const b of started?engine.blobs:demo){
+  ctx.fillStyle=danger>0?'#cf725d':'#9fa58e';ctx.fillText(danger>0?'MAKE A LITTLE ROOM':'A LITTLE ROOM TO GROW',WIDTH/2,engine.vessel.FILL_LINE+14);
+  for(const b of started?engine.blobs:engine.bottleId==='classic'?demo:[]){
     const box=b.bounds,outside=box&&(box.minX<0||box.maxX>WIDTH||box.minY<0||box.maxY>HEIGHT);
     drawBlob(b,1,outside?dragCtx:ctx);
   }
   for(const p of particles){ctx.globalAlpha=p.life/.6;ctx.fillStyle=colors[p.level];ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.2,2.8*p.life/.6),0,Math.PI*2);ctx.fill();}
   ctx.globalAlpha=1;
   ctx.globalAlpha=1;
-  drawBottleFront(ctx);
+  engine.vessel.drawBottleFront(ctx);
   if(started&&(!engine.over||!endedShown)){
     if((keyboardAiming||aimGesture)&&!aimCancelled)drawAimGuide();
     drawRack(elapsed);
-    if(engine.shots===0){ctx.font='500 10px "DM Sans", sans-serif';ctx.fillStyle='#99a08b';ctx.fillText('Pull a blob down, then release to shoot.',WIDTH/2,HEIGHT*.61);ctx.fillText('Lift it up to merge or change its position.',WIDTH/2,HEIGHT*.61+17);}
+    if(engine.shots===0&&engine.bottleId==='classic'){ctx.font='500 10px "DM Sans", sans-serif';ctx.fillStyle='#99a08b';ctx.fillText(engine.bottleId==='classic'?'Pull a blob down, then release to shoot.':'Aim into a neck, then release to shoot.',WIDTH/2,HEIGHT*.61);ctx.fillText('Lift it up to merge or change its position.',WIDTH/2,HEIGHT*.61+17);}
   }
 }
 function resize(){
   const rect=canvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  if(!rect.width||!rect.height)return;
   canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);
   ctx.setTransform(canvas.width/WIDTH,0,0,canvas.height/HEIGHT,0,0);draw();
 }
@@ -488,7 +515,7 @@ function drawPhysicsPreview(elapsed){
   p.fillStyle='#535e3912';
   for(let x=14;x<360;x+=22)for(let y=12;y<180;y+=22){p.beginPath();p.arc(x,y,.8,0,Math.PI*2);p.fill();}
   p.strokeStyle='#bfc5b3';p.lineWidth=1;p.beginPath();p.moveTo(0,178);p.lineTo(360,178);p.stroke();
-  p.save();p.translate(0,178-BOTTLE_FLOOR);for(const b of previewEngine.blobs)drawBlob(b,1,p);p.restore();
+  p.save();p.translate(0,178-engine.vessel.BOTTLE_FLOOR);for(const b of previewEngine.blobs)drawBlob(b,1,p);p.restore();
   if(previewAge>4)resetPreview();
 }
 new ResizeObserver(fitJar).observe(document.querySelector('.jar-wrap'));
@@ -504,7 +531,7 @@ function frame(now){
         if(!reducedMotion)for(let k=0;k<10;k++){const angle=k*Math.PI/5;particles.push({x:b.x,y:b.y,vx:Math.cos(angle)*90,vy:Math.sin(angle)*90-40,life:.6,level:b.level});}
         if(b.level>highestSeen){highestSeen=b.level;if(b.level===MAX_LEVEL)toast('4096! A pocketful of possibility.');}
       }
-      if(events.length){best=Math.max(best,engine.score);updateHUD();}
+      if(events.length){best=Math.max(best,engine.score);achievements.observe(engine,best);updateHUD();}
       if(engine.over){if(engine.endReason==='spill'){cancelAim();updateHUD();save();}else finish();break;}
     }
     for(const p of particles){p.life-=elapsed;p.x+=p.vx*elapsed;p.y+=p.vy*elapsed;p.vy+=150*elapsed;}
@@ -523,9 +550,77 @@ function frame(now){
     updateShootAvailability();
   }
   drawPhysicsPreview(elapsed);
-  draw(elapsed);requestAnimationFrame(frame);
+  if(page==='game')draw(elapsed);requestAnimationFrame(frame);
 }
-if(engine.over&&started)finish();
-else if(started)showOverlay({kicker:'WELCOME BACK, LITTLE DAYDREAMER',title:'Right where<br>you left it.',description:'Your little pile missed you.',button:'Keep squishing',action:resume,secondary:'Start a fresh game',secondaryAction:()=>{$('reset-dialog').showModal();},footnote:'SAVED IN THIS BROWSER.',friends:true,stats:true});
-else $('start').onclick=newGame;
-updateHUD();fitJar();resize();requestAnimationFrame(frame);
+function showSavedState(){
+  if(engine.over&&started)finish();
+  else if(started)showOverlay({kicker:'WELCOME BACK, LITTLE DAYDREAMER',title:'Right where<br>you left it.',description:'Your little pile missed you.',button:'Keep squishing',action:resume,secondary:'Start a fresh game',secondaryAction:()=>{$('reset-dialog').showModal();},footnote:'SAVED IN THIS BROWSER.',friends:true,stats:true});
+  else $('start').onclick=newGame;
+}
+function resetVisuals(){
+  endedShown=false;spillReveal=0;highestSeen=engine.highestLevel;particles=[];rackRings=[];rackSparks=[];accumulator=0;aimAngle=0;
+  rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
+}
+function abandonRound(){
+  cancelAim();
+  if(gameMode==='multiplayer'){
+    try{if(currentMatchKey)localStorage.removeItem(`squish-pocket-match:${currentMatchKey}`);}catch{}
+    activeRoom=null;currentMatchKey='';shownResult='';gameMode='classic';
+  }
+  const physics=engine.physics,id=engine.bottleId;
+  engine=new Engine(undefined,id);engine.setPhysics(physics);
+  started=false;paused=false;endedShown=false;particles=[];rackRings=[];rackSparks=[];overlay.classList.add('hidden');
+  resetVisuals();save();updateHUD();
+}
+function enterClassic(id){
+  cancelAim();if(gameMode==='classic')save();gameMode='classic';activeRoom=null;currentMatchKey='';restoreBottle(id);
+  best=Math.max(best,engine.score,achievements.profile.score);resetVisuals();
+  try{localStorage.setItem(SELECTED_BOTTLE,id);}catch{}
+  if(!started||engine.over)newGame();else resume();
+  updateHUD();save();
+}
+function enterMatch(room,connected){
+  const key=`${room.code}:${room.round}`;
+  if(currentMatchKey!==key||gameMode!=='multiplayer'){
+    cancelAim();if(gameMode==='classic')save();gameMode='multiplayer';activeRoom=room;currentMatchKey=key;shownResult='';
+    engine=new Engine(room.seed,room.bottleId);engine.setPhysics(playerPhysics());
+    let restoredSave=false;
+    try{
+      const data=JSON.parse(localStorage.getItem(`squish-pocket-match:${key}`));
+      if(data?.round===room.round&&data.seed===room.seed){const restored=Engine.restore(data.engine);if(restored?.bottleId===room.bottleId){engine=restored;engine.setPhysics(playerPhysics());restoredSave=true;}}
+    }catch{}
+    started=true;resetVisuals();
+    if(!restoredSave){rackMotion.reset([]);rackMotion.play(engine.rackEvents,engine.rackOrder());}
+  }
+  activeRoom=room;roomConnected=connected;paused=false;overlay.classList.add('hidden');
+  if(room.players[room.you].status==='finished'||engine.over){
+    engine.over=true;
+    if(!endedShown)finish();else showMatchOverlay();
+  }
+  updateHUD();save();
+}
+function updateMatch(room,connected){
+  activeRoom=room;roomConnected=connected;
+  if(gameMode!=='multiplayer'||currentMatchKey!==`${room.code}:${room.round}`)return;
+  if(room.phase==='finished'&&page==='game'){
+    paused=true;cancelAim();best=Math.max(best,room.players[room.you].score);save();
+    const key=`${room.code}:${room.round}`;
+    if(shownResult!==key){shownResult=key;showOverlay({kicker:'MATCH COMPLETE',title:'A lovely little match.',description:shell.resultTitle(room),button:'Back to the room',action:()=>shell.showRoom(),friends:true,stats:true});}
+  }
+  updateHUD();
+}
+shell=createStartPage({
+  initialBottle:engine.bottleId,profile:achievements.profile,cancelAim,showSavedState,
+  classicStatus:id=>{try{const data=JSON.parse(localStorage.getItem(saveKey(id)));return data?.started===true&&!data.engine?.over;}catch{return false;}},
+  onPage:next=>{page=next;dragCanvas.style.display=page==='game'?'':'none';},
+  onShown:()=>{fitJar();resize();updateHUD();},
+  suspend:()=>{cancelAim();paused=started;save();updateHUD();},
+  abandonRound,
+  enterClassic,enterMatch,updateMatch,
+  finishRound:()=>{if(gameMode==='multiplayer'&&!engine.over){engine.over=true;engine.endReason=null;finish();}},
+  getProgress:room=>{
+    if(gameMode!=='multiplayer'||!room||currentMatchKey!==`${room.code}:${room.round}`)return null;
+    save();return {round:room.round,score:engine.score,shots:engine.shots,highestTile:2**(engine.highestLevel+1),done:engine.over,paused:paused||page!=='game',blobs:engine.blobs.slice(0,90).map(b=>({level:b.level,x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10}))};
+  }
+});
+updateHUD();requestAnimationFrame(frame);

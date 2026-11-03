@@ -28,7 +28,8 @@ export function upgradePhysicsDefaults(settings,version){
   return normalized;
 }
 
-// The playable game has a fixed size; legacy saves retain their material choices.
-export function playerPhysics(settings,version){
-  return {...upgradePhysicsDefaults(settings,version),blobSize:DEFAULT_PHYSICS.blobSize};
+// All players use the same material, including games restored from old saves.
+// normalizePhysics/setPhysics still support the engine's simulation checks.
+export function playerPhysics(){
+  return {...DEFAULT_PHYSICS};
 }

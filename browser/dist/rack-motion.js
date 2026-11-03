@@ -1,9 +1,10 @@
+import {bottleFor} from './bottles.js?v=33';
 import {prepare,measure,membrane,overlap,contact,separateBodies} from './softbody.js?v=29';
 import {materialFor,normalizePhysics} from './physics-settings.js?v=29';
-import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=29';
+import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=33';
 import {eject} from './ejection.js?v=29';
 import {outlinesTouch,renderedOutline} from './preparation-contact.js?v=29';
-import {MAX_LEVEL} from './engine.js?v=29';
+import {MAX_LEVEL} from './engine.js?v=33';
 import {insertedOrder} from './preparation-gesture.js?v=29';
 export {trayRadius};
 export const RACK_Y=HOLE.y;
@@ -27,9 +28,10 @@ function moveBody(body,x,y){
 // contact solver transfers momentum and deforms every touching membrane.
 export class RackMotion{
   constructor(reduced=false){
-    this.reduced=reduced;this.visual=new Map();this.rest=new Map();this.queue=[];this.segment=null;this.accumulator=0;
+    this.vessel=bottleFor('classic');this.reduced=reduced;this.visual=new Map();this.rest=new Map();this.queue=[];this.segment=null;this.accumulator=0;
     this.held=null;this.order=[];this.contactPairs=[];this.activeDrags=new Set();this.contactEvents=[];this.settleTimes=new Map();this.mergeBursts=[];this.setPhysics();this.stats={contacts:0,impacts:[],maxDeformation:0};
   }
+  setBottle(id){this.vessel=bottleFor(id);}
   setPhysics(settings){
     const previous=this.physics?.blobSize??150;this.physics=normalizePhysics(settings);this.material=materialFor(this.physics);
     if(previous!==this.physics.blobSize){
@@ -38,7 +40,7 @@ export class RackMotion{
       for(const p of body.nodes){const vx=p.x-p.px,vy=p.y-p.py;p.x=body.x+(p.x-body.x)*ratio;p.y=body.y+(p.y-body.y)*ratio;p.px=p.x-vx;p.py=p.y-vy;}
       measure(body,STEP);
     }
-    if(!this.busy)this.rest=new Map(clusterLayout(this.order,this.physics.blobSize).map(p=>[p.id,{x:p.x,y:p.y}]));
+    if(!this.busy)this.rest=new Map(clusterLayout(this.order,this.physics.blobSize,this.vessel).map(p=>[p.id,{x:p.x,y:p.y}]));
     }
   }
   get busy(){return !!this.segment||this.queue.length>0;}
@@ -50,14 +52,14 @@ export class RackMotion{
     this.order=copy(items);
     this.visual.clear();this.rest.clear();this.queue=[];this.segment=null;this.accumulator=0;this.held=null;this.contactPairs=[];this.activeDrags.clear();this.contactEvents=[];this.settleTimes.clear();this.mergeBursts=[];
     this.stats={contacts:0,impacts:[],maxDeformation:0};
-    clusterLayout(items,this.physics.blobSize).forEach(item=>{this.visual.set(item.id,this.record(item,item.x,item.y));this.rest.set(item.id,{x:item.x,y:item.y});});
+    clusterLayout(items,this.physics.blobSize,this.vessel).forEach(item=>{this.visual.set(item.id,this.record(item,item.x,item.y));this.rest.set(item.id,{x:item.x,y:item.y});});
   }
   place(id,x,y=RACK_Y){const item=this.visual.get(id);if(item){moveBody(item.body,x,y);item.x=x;item.y=y;}}
   interrupt(items=this.order){
     // User input retargets the springs; existing bodies keep moving from their
     // current pose instead of being snapped home or waiting for the queue.
     this.release();this.queue=[];this.segment=null;this.order=copy(items);
-    const targets=clusterLayout(items,this.physics.blobSize),keep=new Set(items.map(b=>b.id));
+    const targets=clusterLayout(items,this.physics.blobSize,this.vessel),keep=new Set(items.map(b=>b.id));
     for(const id of this.visual.keys())if(!keep.has(id))this.visual.delete(id);
     for(const target of targets){
       const item=this.visual.get(target.id);
@@ -101,11 +103,11 @@ export class RackMotion{
   previewInsertion(id,index){
     this.previewing=true;
     const order=index===null?this.order:insertedOrder(this.order,id,index);
-    this.rest=new Map(clusterLayout(order,this.physics.blobSize).map(p=>[p.id,{x:p.x,y:p.y}]));
+    this.rest=new Map(clusterLayout(order,this.physics.blobSize,this.vessel).map(p=>[p.id,{x:p.x,y:p.y}]));
   }
   clearPreview(){
     if(!this.previewing)return;
-    this.previewing=false;this.rest=new Map(clusterLayout(this.order,this.physics.blobSize).map(p=>[p.id,{x:p.x,y:p.y}]));
+    this.previewing=false;this.rest=new Map(clusterLayout(this.order,this.physics.blobSize,this.vessel).map(p=>[p.id,{x:p.x,y:p.y}]));
   }
   release(velocity={vx:0,vy:0}){
     this.clearPreview();
@@ -132,7 +134,7 @@ export class RackMotion{
   }
   begin(){
     const event=this.queue.shift();if(!event){this.segment=null;return;}
-    const target=new Map(clusterLayout(event.after,this.physics.blobSize).map(item=>[item.id,item]));
+    const target=new Map(clusterLayout(event.after,this.physics.blobSize,this.vessel).map(item=>[item.id,item]));
     if(event.kind==='arrive'&&!this.visual.has(event.id)){
       const fromLeft=event.side==='left';
       this.visual.set(event.id,this.record({id:event.id,level:event.level},fromLeft?-32:392,RACK_Y,fromLeft?1080:-1080));
@@ -145,7 +147,7 @@ export class RackMotion{
     for(const [id,item] of target)if(!this.visual.has(id))this.visual.set(id,this.record(item,item.x,item.y));
     this.segment={event,target,start:new Map([...this.visual].map(([id,b])=>[id,{x:b.x,y:b.y}])),time:0,hitAt:null,mergeAt:null,affected:new Set(event.kind==='arrive'?[event.id]:[])};
   }
-  bounds(body){preparationWalls(body);}
+  bounds(body){preparationWalls(body,this.vessel);}
   simulate(dt){
     const s=this.segment,event=s?.event;
     const merging=new Set(s?.mergeAt!==null&&s?.mergeAt!==undefined?event.from??[]:[]);
@@ -161,7 +163,7 @@ export class RackMotion{
       const k=flying?0:mergeSource?90:30,damping=flying?0:mergeSource?12:9;
       if(item.returning&&Math.hypot(b.x-HOLE.x,b.y-HOLE.y)<45&&b.y<100-b.renderRadius)item.returning=false;
       const home=this.rest.get(item.id)??s?.target.get(item.id)??HOLE;
-      const attract=mergeSource?target:item.returning?returnTarget(b,item.returnSide,home):target;
+      const attract=mergeSource?target:item.returning?returnTarget(b,item.returnSide,home,this.vessel):target;
       const ax=(attract.x-b.x)*k-b.vx*damping,ay=(attract.y-b.y)*k-b.vy*damping;
       const retention=Math.exp(-(this.material.drag+1.3)*dt);
       for(const p of b.nodes){

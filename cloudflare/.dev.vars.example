@@ -1,0 +1,2 @@
+# Local simulator only: emails are captured by Wrangler, not delivered.
+EMAIL_ENABLED=true

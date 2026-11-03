@@ -1,5 +1,19 @@
 # Verification
 
+Multiplayer rooms and start-page mode selector (2026-11-03):
+
+- All **135 Node browser tests** and **11 Cloudflare room/achievement tests** pass (`npm test` in `browser/` and `cloudflare/`), plus the 4 Durable Object runtime tests in `cloudflare/runtime-tests/rooms.test.js`.
+- Added `start-page.js` and `room-client.js` for Classic vs. Multiplayer mode selection, private 6-character room creation/joining, live opponent score and bottle preview (`#opponent-dialog`), and automatic WebSocket reconnection.
+- Fixed overlay restoration when returning to a finished bottle in an active match, guarded against the 0.7-second spill reveal overwriting a completed match result overlay, played initial rack arrivals on fresh multiplayer rounds, and scheduled Durable Object alarms (`syncAlarm`) for the 30-second disconnect grace period while skipping redundant SQLite commits/broadcasts on unchanged progress ticks.
+
+Bottle selector and reference flask correction (2026-11-03):
+
+- All **135 Node tests pass**, including the separate flask’s **45-case** normal-entry matrix. Targeted flask checks also pass after the final neck sizing.
+- Restored the original `bottle.js` exactly from the pre-flask implementation. Original bottle is the default, with its previous wide opening, chamber, floor and collision behavior.
+- Added a separate reference flask with a round chamber, taller wider central joint, and two narrower angled side joints. Real angled-mouth crossings and solid separating glass are covered by targeted physics tests, including 45 normal-value launches.
+- The Your bottle selector preserves an independent round for each bottle. Browser checks cover switching both ways, returning to the prior ready values and pile, remembering the selected bottle after reload, and phone layouts.
+- Legacy saves without a bottle ID restore into Original bottle, retaining score, shots and peak tile. Fixed physics, achievements, world record and messaging remain available.
+
 Current own-slot and preparation-animation update:
 
 - All **121 Node tests pass** on the final launch-height fix. JavaScript syntax and whitespace checks pass.

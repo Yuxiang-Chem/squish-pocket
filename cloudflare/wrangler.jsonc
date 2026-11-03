@@ -1,9 +1,26 @@
 {
   "name": "squish-pocket",
+  "main": "worker.js",
   "compatibility_date": "2026-11-02",
   "assets": {
-    "directory": "../browser/dist"
+    "directory": "../browser/dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
   },
+  "durable_objects": {"bindings": [{"name": "ROOMS", "class_name": "GameRoom"}]},
+  "migrations": [{"tag": "v1-game-rooms", "new_sqlite_classes": ["GameRoom"]}],
+  "d1_databases": [{
+    "binding": "ACHIEVEMENTS",
+    "database_name": "squish-pocket-achievements",
+    "database_id": "6c18b29f-f6b2-4e44-bd32-40c3206db8bf",
+    "migrations_dir": "migrations"
+  }],
+  "send_email": [{"name": "EMAIL", "destination_address": "chem.xjtlu@gmail.com"}],
+  "vars": {
+    "EMAIL_FROM": "records@chemisgreat.online",
+    "EMAIL_ENABLED": "true"
+  },
+  "observability": {"enabled": true, "traces": {"enabled": true}},
   "routes": [
     {
       "pattern": "squish.chemisgreat.online",

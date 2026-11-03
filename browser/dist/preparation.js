@@ -1,15 +1,18 @@
-import {BOTTLE_MOUTH,BOTTLE_FLOOR,bottleLeftAt,bottleOutline,insideBottle} from './bottle.js?v=29';
+import {bottleFor} from './bottles.js?v=33';
+const original=bottleFor('classic');
 export const HOLE={x:180,y:58};
 export const trayRadius=(level,blobSize=150)=>Math.max(9,Math.min(22,13*1.2**level)*blobSize/100);
 // A line of touching neighbors: the middle separates the two outer blobs.
-export function clusterLayout(items,blobSize=150){
+export function clusterLayout(items,blobSize=150,vessel=original){
+  if(vessel.rackSpread)return items.map((item,i)=>({...item,x:HOLE.x+(i-(items.length-1)/2)*vessel.rackSpread,y:HOLE.y}));
   if(!items.length)return [];
   const radii=items.map(b=>trayRadius(b.level,blobSize)),positions=[0];
   for(let i=1;i<items.length;i++)positions.push(positions[i-1]+(radii[i-1]+radii[i])*1.4*.93);
   const center=items.length===3?positions[1]:(positions[0]+positions.at(-1))/2;
   return items.map((item,i)=>({...item,x:HOLE.x+positions[i]-center,y:HOLE.y}));
 }
-export function outsideGlass(x,y,rx=0,ry=0){
+export function outsideGlass(x,y,rx=0,ry=0,vessel=original){
+  const {BOTTLE_MOUTH,BOTTLE_FLOOR,bottleLeftAt}=vessel;
   if(y+ry<BOTTLE_MOUTH-2||y-ry>BOTTLE_FLOOR+2)return true;
   let left=Infinity;
   for(let yy=Math.max(BOTTLE_MOUTH,y-ry);yy<=Math.min(BOTTLE_FLOOR,y+ry)+.001;yy+=2)left=Math.min(left,bottleLeftAt(yy));
@@ -17,8 +20,8 @@ export function outsideGlass(x,y,rx=0,ry=0){
   return x+rx<left-3||x-rx>360-left+3;
 }
 // Stop the held body at the first glass crossing, even for a fast pointer jump.
-export function dragOutsideGlass(from,to,radius){
-  const valid=p=>outsideGlass(p.x,p.y,radius*1.45,radius*.85);
+export function dragOutsideGlass(from,to,radius,vessel=original){
+  const valid=p=>outsideGlass(p.x,p.y,radius*1.45,radius*.85,vessel);
   const steps=Math.min(800,Math.max(1,Math.ceil(Math.hypot(to.x-from.x,to.y-from.y)/4)));
   let previous=from;
   for(let k=1;k<=steps;k++){
@@ -32,8 +35,9 @@ export function dragOutsideGlass(from,to,radius){
   }
   return {...to,blocked:false};
 }
-const boundary=[...bottleOutline,bottleOutline[0]];
-export function preparationWalls(body){
+export function preparationWalls(body,vessel=original){
+  const {BOTTLE_MOUTH,bottleOutline,insideBottle}=vessel;
+  const boundary=[...bottleOutline,bottleOutline[0]];
   for(const p of body.nodes){
     if(p.y<BOTTLE_MOUTH||!insideBottle(p.x,p.y))continue;
     let best=Infinity,qx=0,qy=0,nx=0,ny=-1;
@@ -52,7 +56,8 @@ export function preparationWalls(body){
   }
 }
 
-export function returnTarget(body,side,home=HOLE){
+export function returnTarget(body,side,home=HOLE,vessel=original){
+  const {BOTTLE_MOUTH,BOTTLE_FLOOR}=vessel;
   const rx=body.renderRadius*1.5,ry=body.renderRadius*.9;
   if(body.y<=BOTTLE_MOUTH-ry-6)return home;
   const outerX=side<0?-rx-12:360+rx+12;

@@ -43,15 +43,15 @@ test('Both extreme stiffness and viscosity settings remain stable in a loaded ga
   }
 });
 
-test('Player physics fixes legacy sizes while preserving material choices and game progress',()=>{
+test('Player physics locks legacy stiffness, viscosity and size while preserving game progress',()=>{
   for(const size of [40,80,110,150]){
     const e=new Engine(123);e.setPhysics({stiffness:18,viscosity:50,blobSize:size});e.shoot(0,.2);e.score=64;
     const restored=Engine.restore(JSON.parse(JSON.stringify(e)));
     restored.setPhysics(playerPhysics(restored.physics,1));
-    assert.deepEqual(restored.physics,{stiffness:18,viscosity:50,blobSize:150});
+    assert.deepEqual(restored.physics,DEFAULT_PHYSICS);
     assert.equal(restored.score,64);assert.equal(restored.shots,1);assert.equal(restored.blobs.length,1);
     assert.equal(restored.blobs[0].renderRadius,restored.radius(restored.blobs[0].level));
   }
   assert.deepEqual(playerPhysics({stiffness:30,viscosity:20,blobSize:80}),DEFAULT_PHYSICS);
-  assert.deepEqual(playerPhysics({stiffness:30,viscosity:20,blobSize:80},1),{stiffness:30,viscosity:20,blobSize:150});
+  assert.deepEqual(playerPhysics({stiffness:30,viscosity:20,blobSize:80},1),DEFAULT_PHYSICS);
 });

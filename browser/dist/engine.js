@@ -2,7 +2,7 @@ import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies}
 import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
 import {refillRack,hasMatchingNeighbors} from './rack.js?v=29';
-import {bottleWalls,insideBottle,BOTTLE_MOUTH,FILL_LINE,updateBottleState,BOTTLE_VERSION,BOTTLE_FLOOR} from './bottle.js?v=29';
+import {bottleFor,isBottleId} from './bottles.js?v=33';
 import {eject} from './ejection.js?v=29';
 import {insertedOrder} from './preparation-gesture.js?v=29';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;
@@ -17,13 +17,15 @@ export function blob(level,x,y,vx=0,vy=0){
   return {level,x,y,vx,vy,age:0,danger:0,shape:Array(24).fill(0),spring:Array(24).fill(0)};
 }
 export class Engine {
-  constructor(seed=Date.now()){
-    this.bottleVersion=BOTTLE_VERSION;this.blobs=[];this.score=0;this.shots=0;this.current=0;this.next=1;
+  constructor(seed=Date.now(),bottleId='classic'){
+    this.bottleId=isBottleId(bottleId)?bottleId:'classic';
+    this.bottleVersion=this.vessel.BOTTLE_VERSION;this.blobs=[];this.score=0;this.shots=0;this.current=0;this.next=1;this.highestLevel=0;
     this.cooldown=0;this.over=false;this.endReason=null;this.seed=seed>>>0;this.fuseSerial=0;
     this.physics=normalizePhysics();
     this.rack=[];this.rackSerial=0;this.selectedId=null;this.incoming=this.newIncoming();
     this.rackEvents=refillRack(this,()=>this.newIncoming(),MAX_LEVEL);this.syncRack();
   }
+  get vessel(){return bottleFor(this.bottleId);}
   randomUint(){this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed;}
   setPhysics(settings){
     const oldSize=this.physics?.blobSize??150,next=normalizePhysics(settings);
@@ -49,6 +51,7 @@ export class Engine {
   random(){return (this.randomUint()>>>8)%5;}
   newIncoming(){return {level:this.random(),side:(this.randomUint()>>>31)?'left':'right'};}
   syncRack(){
+    this.highestLevel=Math.max(this.highestLevel,...this.rack.map(b=>b.level),...this.blobs.map(b=>b.level));
     const selected=this.rack.find(b=>b.id===this.selectedId)??this.rack[1];
     this.selectedId=selected?.id??null;this.current=selected?.level??0;this.next=this.incoming.level;
   }
@@ -107,6 +110,7 @@ export class Engine {
   }
   step(dt){
     if(this.over||!Number.isFinite(dt)||dt<=0||dt>1/30)return [];
+    const {bottleWalls,insideBottle,BOTTLE_MOUTH,FILL_LINE,updateBottleState}=this.vessel;
     this.cooldown=Math.max(0,this.cooldown-dt);
     const material=materialFor(this.physics);
     const bs=this.blobs,delay=instantMerge?0:MERGE_DELAY,pairs=new Map();
@@ -162,6 +166,7 @@ export class Engine {
       n.hasEntered=!!(a.hasEntered||b.hasEntered||interior);
       for(const p of n.nodes)p.bottleSide=p.y>=BOTTLE_MOUTH&&(interior||insideBottle(p.x,p.y));
       bottleWalls(n);measure(n,dt);
+      this.highestLevel=Math.max(this.highestLevel,level);
       this.score+=2**(level+1);return {blob:n,value:2**(level+1)};
     });
     if(merged.size)this.blobs=bs.filter(b=>!merged.has(b)).concat(events.map(e=>e.blob));
@@ -173,11 +178,14 @@ export class Engine {
     if(!this.over||this.endReason!=='spill'||!Number.isFinite(dt)||dt<=0)return;
     this.spillAccumulator=(this.spillAccumulator??0)+Math.min(dt,.05);
     const material=materialFor(this.physics);
+    const {bottleWalls}=this.vessel;
     while(this.spillAccumulator>=1/120){this.spillAccumulator-=1/120;
       for(const b of this.blobs)if(b.spilled){integrate(b,1/120,material);membrane(b,this.radius(b.level),material);bottleWalls(b,true);measure(b,1/120);b.age+=1/120;}
     }
   }
   static restore(data){
+    if(data?.bottleId!==undefined&&!isBottleId(data.bottleId))return null;
+    if(data?.highestLevel!==undefined&&(!Number.isInteger(data.highestLevel)||data.highestLevel<0||data.highestLevel>MAX_LEVEL))return null;
     if(!data||!Array.isArray(data.blobs)||data.blobs.length>90||!Number.isSafeInteger(data.score)||data.score<0||!Number.isSafeInteger(data.shots)||data.shots<0||![data.current,data.next].every(x=>Number.isInteger(x)&&x>=0&&x<=MAX_LEVEL)||!Number.isFinite(data.cooldown)||typeof data.over!=='boolean'||!Number.isInteger(data.seed))return null;
     for(const b of data.blobs){
       if(!Number.isInteger(b.level)||b.level<0||b.level>MAX_LEVEL||!['x','y','vx','vy','age','danger'].every(k=>Number.isFinite(b[k]))||!['shape','spring'].every(k=>Array.isArray(b[k])&&b[k].length===24&&b[k].every(Number.isFinite)))return null;
@@ -193,7 +201,8 @@ export class Engine {
     if(data.rack&&(!Array.isArray(data.rack)||data.rack.length!==3||!data.rack.every(b=>levelOK(b.level)&&Number.isSafeInteger(b.id)&&b.id>0)||new Set(data.rack.map(b=>b.id)).size!==3||!data.rack.some(b=>b.id===data.selectedId)||!Number.isSafeInteger(data.rackSerial)||data.rackSerial<Math.max(...data.rack.map(b=>b.id))||!data.incoming||!Number.isInteger(data.incoming.level)||data.incoming.level<0||data.incoming.level>4||!['left','right'].includes(data.incoming.side)))return null;
     // Three capped values cannot be produced with only three slots and 2–32 entries.
     if(data.rack?.every(b=>b.level===MAX_LEVEL))return null;
-    const restored=Object.assign(new Engine(),data);
+    const restored=Object.assign(new Engine(undefined,data.bottleId??'classic'),data);
+    const {bottleWalls,BOTTLE_VERSION,BOTTLE_FLOOR}=restored.vessel;
     // Older saves have no serial; unpaired fuses are dropped on the next step.
     restored.fuseSerial=Math.max(restored.fuseSerial??0,...data.blobs.map(b=>b.fuse?.id??0));
     if(!data.rack){
@@ -201,11 +210,19 @@ export class Engine {
       restored.incoming=restored.newIncoming();restored.rackEvents=refillRack(restored,()=>restored.newIncoming(),MAX_LEVEL);
     }
     if(hasMatchingNeighbors(restored.rack))restored.rackEvents=refillRack(restored,()=>restored.newIncoming(),MAX_LEVEL);
-    if(data.bottleVersion!==BOTTLE_VERSION){
+    if(restored.bottleId==='classic'&&(data.bottleVersion??1)<2){
       // Lift an older settled pile with the shorter base, preserving its shape and momentum.
       for(const b of restored.blobs)if(b.age>2&&!b.spilled){
         b.y-=468-BOTTLE_FLOOR;
         if(b.nodes){for(const p of b.nodes){p.y-=468-BOTTLE_FLOOR;p.py-=468-BOTTLE_FLOOR;}measure(b,1/120);}
+      }
+    }
+    if(data.bottleVersion!==BOTTLE_VERSION){
+      // Fit entered blobs to the selected vessel when restoring legacy geometry.
+      // Version-2 classic saves already use the current floor; do not lift again.
+      for(const b of restored.blobs)if(!b.spilled&&(b.inBottle||b.hasEntered)&&b.nodes){
+        for(const p of b.nodes)p.bottleSide=true;
+        bottleWalls(b);measure(b,1/120);
       }
     }
     restored.bottleVersion=BOTTLE_VERSION;restored.setPhysics(data.physics);restored.syncRack();return restored;
