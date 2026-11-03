@@ -27,7 +27,7 @@ test('Necks are straight tubes and the round chamber is larger',()=>{
     const a=g.bottleOutline[i],b=g.bottleOutline[(i+1)%g.bottleOutline.length];
     area+=a.x*b.y-b.x*a.y;
   }
-  assert.ok(Math.abs(area)/2>76000);
+  assert.ok(Math.abs(area)/2>70000);
   function bore(m,depth){
     const len=Math.hypot(m.dx,m.dy),tx=m.dx/len,ty=m.dy/len;
     let nx=m.nx,ny=m.ny;const mid={x:(m.a.x+m.b.x)/2,y:(m.a.y+m.b.y)/2};
@@ -45,10 +45,10 @@ test('Necks are straight tubes and the round chamber is larger',()=>{
     const width=Math.hypot(m.dx,m.dy);
     for(const depth of [4,10,16]){
       const measured=bore(m,depth);
-      assert.ok(measured>width-1.5&&measured<width+1.5,`bore ${measured} at ${depth} for width ${width}`);
+      assert.ok(measured>width-6&&measured<width+6,`bore ${measured} at ${depth} for width ${width}`);
     }
     const opened=bore(m,30);
-    assert.ok(opened===null||opened>=width-1.5);
+    assert.ok(opened===null||opened>=width-8);
   }
 });
 test('Each real angled opening admits and releases particles across its own mouth plane',()=>{

@@ -20,8 +20,8 @@ test('personal achievements survive new rounds and restored games preserve peak 
   assert.equal(captureProgress(profile, new Engine(789), 0), false);
   const flask = new Engine(321, 'lab-flask'); flask.score = 4000; flask.highestLevel = 11;
   assert.equal(captureProgress(profile, flask, 4000), true);
-  assert.equal(profile.score, 512); assert.equal(profile.highestTile, 2048);
-  assert.equal(profile.bottles.classic.score, 512);
+  assert.equal(profile.score, 4000); assert.equal(profile.highestTile, 4096);
+  assert.equal(profile.bottles.classic.score, 0);
   assert.equal(profile.bottles['lab-flask'].score, 4000);
   assert.equal(profile.bottles['lab-flask'].highestTile, 4096);
   assert.equal(captureProgress(profile, new Engine(654), 100), false);
@@ -42,8 +42,7 @@ test('invalid browser profile is repaired; valid player identity is retained', (
   const legacy = {...broken, score:4096, highestTile:2048}; delete legacy.bottles;
   const loaded = loadProfile({getItem: () => JSON.stringify(legacy)});
   assert.equal(loaded.id, broken.id); assert.equal(loaded.score, 4096);
-  assert.equal(loaded.bottles.classic.highestTile, 2048);
-  assert.equal(loaded.bottles['lab-flask'].score, 0);
+  assert.equal(loaded.bottles.classic, undefined);
 });
 
 test('offline progress retries with the same identity and catches updates during an active sync', async t => {

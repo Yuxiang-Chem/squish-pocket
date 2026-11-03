@@ -21,12 +21,14 @@ export function measure(b,dt){
   b.x=x/COUNT;b.y=y/COUNT;b.vx=vx/(COUNT*dt);b.vy=vy/(COUNT*dt);
   b.bounds={minX,minY,maxX,maxY};
 }
-export function integrate(b,dt,material=DEFAULT_MATERIAL){
+export function integrate(b,dt,material=DEFAULT_MATERIAL,water=null){
   const retention=Math.exp(-material.drag*dt);
   for(const p of b.nodes){
-    const dx=Math.max(-9,Math.min(9,(p.x-p.px)*retention));
-    const dy=Math.max(-9,Math.min(9,(p.y-p.py)*retention));
-    p.px=p.x;p.py=p.y;p.x+=dx;p.y+=dy+680*dt*dt;
+    const wet=water&&p.bottleSide&&!b.spilled?Math.max(0,Math.min(1,(p.y-water.level+3)/6)):0;
+    const fluidDrag=Math.exp(-(water?.drag??0)*wet*dt);
+    const dx=Math.max(-9,Math.min(9,(p.x-p.px)*retention*fluidDrag));
+    const dy=Math.max(-9,Math.min(9,(p.y-p.py)*retention*fluidDrag));
+    p.px=p.x;p.py=p.y;p.x+=dx;p.y+=dy+(680-(water?.buoyancy??0)*wet)*dt*dt;
   }
 }
 function distanceConstraint(a,b,rest,stiffness){
