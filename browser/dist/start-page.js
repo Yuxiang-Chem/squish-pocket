@@ -1,5 +1,5 @@
-import {BOTTLES} from './bottles.js?v=37';
-import {radiusFor} from './engine.js?v=37';
+import {BOTTLES} from './bottles.js?v=44';
+import {radiusFor} from './engine.js?v=44';
 import {RoomClient} from './room-client.js?v=34';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
@@ -128,7 +128,7 @@ export function createStartPage(hooks){
   $('match-opponent-view').onclick=()=>{hooks.cancelAim();drawOpponent();$('opponent-dialog').showModal();};
   $('room-name').value=hooks.profile.name==='A squishy friend'?'':hooks.profile.name.slice(0,24);
   try{const code=localStorage.getItem('squish-pocket-last-room');if(code){$('room-rejoin').classList.remove('hidden');$('room-rejoin').textContent=`Rejoin room ${code}`;$('room-rejoin').onclick=()=>run(()=>client.open(code));}}catch{}
-  for(const [id,key] of [['menu-bottle-classic','classic'],['menu-bottle-flask','lab-flask']]){const ctx=$(id).getContext('2d');ctx.scale(.5,.5);BOTTLES[key].drawBottleBack(ctx);BOTTLES[key].drawBottleFront(ctx);}
+  for(const button of document.querySelectorAll('[data-bottle]')){const ctx=button.querySelector('canvas').getContext('2d');ctx.scale(.5,.5);BOTTLES[button.dataset.bottle].drawBottleBack(ctx);BOTTLES[button.dataset.bottle].drawBottleFront(ctx);}
   if(new URL(location.href).searchParams.has('teststate')){setPage('game');hooks.showSavedState?.();}
   else setPage('home');
   return {client,showRoom:()=>showSetup('multiplayer'),publish:()=>client.publish(),resultTitle};
