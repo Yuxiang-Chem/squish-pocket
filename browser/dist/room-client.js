@@ -12,7 +12,7 @@ export class RoomClient {
     let result;try{result=await response.json();}catch{throw new Error('Multiplayer is unavailable. Please try again.');}
     if(!response.ok)throw Object.assign(new Error(result.error||'Could not reach the room.'),{status:response.status});return result;
   }
-  async create(name,bottleId){const {code}=await this.api('/api/rooms',{name,bottleId});await this.open(code);}
+  async create(name,bottleId,mergeMode='two'){const {code}=await this.api('/api/rooms',{name,bottleId,mergeMode});await this.open(code);}
   async join(name,code){code=code.trim().toUpperCase();if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))throw new Error('Enter the six-character room code.');await this.api(`/api/rooms/${code}/join`,{name});await this.open(code);}
   async open(code){
     if(!/^[A-HJ-NP-Z2-9]{6}$/.test(code))throw new Error('Enter a valid room code.');

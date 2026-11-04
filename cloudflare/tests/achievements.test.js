@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import worker from '../api.js';
 
 // Execute the actual parameterized statements against SQLite, D1's SQL engine.
-function setup({beforeReset=false} = {}) {
+function setup({beforeReset=false,beforeThree=false} = {}) {
   const sql = new DatabaseSync(':memory:');
   sql.exec(readFileSync(new URL('../migrations/0001_achievements.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0002_bottle_records.sql', import.meta.url), 'utf8'));
@@ -16,6 +16,7 @@ function setup({beforeReset=false} = {}) {
   if(!beforeReset)sql.exec(readFileSync(new URL('../migrations/0007_reset_dry_flask_personal_scores.sql', import.meta.url), 'utf8'));
   if(!beforeReset)sql.exec(readFileSync(new URL('../migrations/0008_laboratory_vessels.sql', import.meta.url), 'utf8'));
   if(!beforeReset)sql.exec(readFileSync(new URL('../migrations/0009_laboratory_water_vessels.sql', import.meta.url), 'utf8'));
+  if(!beforeThree)sql.exec(readFileSync(new URL('../migrations/0010_three_combine.sql', import.meta.url), 'utf8'));
   const db = {prepare(query) {
     return {values: [], bind(...values) { this.values = values; return this; },
       async run() { const result = sql.prepare(query).run(...this.values); return {meta: {changes: result.changes}}; },
@@ -364,4 +365,28 @@ test('dry flask top five uses only current epoch scores while retaining wet and 
   const result=(await t.request('/api/achievements')).data;
   assert.equal(result.leaderboard[0].name,'Historical');assert.equal(result.bottles['lab-flask-water'].leaderboard[0].name,'Historical');
   assert.deepEqual(result.bottles['lab-flask'].leaderboard,[{rank:1,name:'Fresh',score:128,highestTile:32,isYou:false}]);
+});
+
+test('Three Combine has independent identities, points, milestones and top-five boards',async()=>{
+ const t=setup(),a=t.player(),b=t.player();await t.submit(a,4096,2048,'Two champion');
+ let result=await t.request('/api/achievements?merge=three');assert.equal(result.status,200);assert.equal(result.data.mergeMode,'three');assert.equal(result.data.highestTile,1);assert.deepEqual(result.data.leaderboard,[]);
+ const payload=(name,score,tile)=>({name,score,highestTile:tile,bottles:{classic:{score,highestTile:tile}}});
+ result=await t.request('/api/achievements?merge=three',payload('Triple champion',2187,2187),a);assert.equal(result.status,200);assert.equal(result.data.record.score,2187);assert.equal(result.data.milestone,2187);assert.equal(result.data.reachedMilestone,1);
+ await t.request('/api/achievements?merge=three',payload('Triple second',81,27),b);
+ result=await t.request('/api/achievements?merge=three');assert.deepEqual(result.data.leaderboard.map(r=>r.score),[2187,81]);assert.equal(result.data.bottles.classic.record.name,'Triple champion');
+ result=await t.request('/api/achievements');assert.equal(result.data.record.name,'Two champion');assert.equal(result.data.record.score,4096);assert.equal(result.data.reached2048,1);
+ assert.equal((await t.request('/api/achievements?merge=three',payload('Bad two value',4,4),a)).status,400);
+ assert.equal((await t.request('/api/achievements',payload('Bad triple value',81,27),a)).status,400);
+ assert.equal((await t.request('/api/record-message?merge=three',{bottle:'classic',message:'Three is lovely'},a)).status,200);assert.match(t.emails[0].subject,/Three Combine/);
+ assert.deepEqual(t.sql.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+
+test('adding Three Combine leaves every original identity, best and holder intact',async()=>{
+ const t=setup({beforeThree:true}),a=t.player();
+ await t.request('/api/achievements',{name:'Keep my original record',score:4096,highestTile:2048,bottles:{classic:{score:4096,highestTile:2048}}},a);
+ const tables=['players','world_record','bottle_scores','bottle_records','record_messages','bottle_messages','flask_current_scores'];
+ const rows=()=>Object.fromEntries(tables.map(table=>[table,t.sql.prepare('SELECT * FROM '+table+' ORDER BY 1,2').all()]));
+ const before=rows();t.sql.exec('BEGIN;'+readFileSync(new URL('../migrations/0010_three_combine.sql',import.meta.url),'utf8')+'COMMIT;');assert.deepEqual(rows(),before);
+ assert.equal((await t.request('/api/achievements')).data.record.score,4096);assert.equal((await t.request('/api/achievements?merge=three')).data.record,null);
+ assert.deepEqual(t.sql.prepare('PRAGMA foreign_key_check').all(),[]);
 });

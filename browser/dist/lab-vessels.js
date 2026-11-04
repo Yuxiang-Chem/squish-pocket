@@ -1,4 +1,4 @@
-import {createVessel} from './vessel.js?v=52';
+import {createVessel} from './vessel.js?v=57';
 function curve(points,b,c,d,count=14){
   const a=points.at(-1);
   for(let i=1;i<=count;i++){const t=i/count,u=1-t;points.push({x:u**3*a.x+3*u*u*t*b.x+3*u*t*t*c.x+t**3*d.x,y:u**3*a.y+3*u*u*t*b.y+3*u*t*t*c.y+t**3*d.y});}
@@ -39,10 +39,10 @@ function glassVessel({id,name,left,floor,fillLine,capacity,funnel=false,version=
       }ctx.restore();
     }});
 }
-const conicalLeft=[{x:139,y:116},{x:139,y:174}];
-curve(conicalLeft,{x:139,y:188},{x:128,y:203},{x:120,y:218});
+const conicalLeft=[{x:98,y:116},{x:98,y:174}];
+curve(conicalLeft,{x:98,y:188},{x:92,y:203},{x:84,y:218});
 conicalLeft.push({x:36,y:380});curve(conicalLeft,{x:26,y:400},{x:35,y:408},{x:52,y:408});
-export const conicalFlask=glassVessel({id:'conical-flask',name:'Conical flask',left:conicalLeft,floor:408,fillLine:220,capacity:'500 mL'});
+export const conicalFlask=glassVessel({id:'conical-flask',name:'Conical flask',left:conicalLeft,floor:408,fillLine:220,capacity:'500 mL',version:2});
 // Longer bowl, with more width retained down its body for a larger playable volume.
 // Retain the flared lip, reducing its previous 280-unit opening by one third.
 const funnelLeft=[{x:180-280/3,y:96}];

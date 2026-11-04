@@ -1,3 +1,4 @@
+import {ruleFor,validValue} from '../browser/dist/merge-rules.js';
 export const ROOM_TTL=6*60*60*1000,RECONNECT_GRACE=30000;
 export const validBottle=id=>['classic','lab-flask','classic-water','lab-flask-water','separating-funnel','conical-flask','separating-funnel-water','conical-flask-water'].includes(id);
 export const roomError=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
@@ -7,15 +8,16 @@ export function playerName(name,fallback){
   if(name.length>24||/[\u0000-\u001f\u007f]/.test(name))roomError('Use a name of 1–24 characters.');
   return name;
 }
-const player=(name,tokenHash)=>({name,tokenHash,connected:false,disconnectedAt:null,status:'waiting',score:0,shots:0,highestTile:2,blobs:[],paused:false});
-export function newRoom(code,name,bottleId,tokenHash,now=Date.now()){
+const player=(name,tokenHash,mergeMode='two')=>({name,tokenHash,connected:false,disconnectedAt:null,status:'waiting',score:0,shots:0,highestTile:ruleFor(mergeMode).start,blobs:[],paused:false});
+export function newRoom(code,name,bottleId,tokenHash,now=Date.now(),mergeMode='two'){
+  if(!['two','three'].includes(mergeMode))roomError('Choose a valid merge mode.');
   if(!validBottle(bottleId))roomError('Choose a valid bottle.');
-  return {code,bottleId,phase:'lobby',round:0,seed:0,players:[player(playerName(name,'Player 1'),tokenHash)],createdAt:now,expiresAt:now+ROOM_TTL,winner:null,reason:null};
+  return {code,bottleId,mergeMode,phase:'lobby',round:0,seed:0,players:[player(playerName(name,'Player 1'),tokenHash,mergeMode)],createdAt:now,expiresAt:now+ROOM_TTL,winner:null,reason:null};
 }
 export function addPlayer(room,name,hash){
   if(room.phase!=='lobby')roomError('This match has already started. Rejoin from the same browser.',409);
   if(room.players.length>=2)roomError('This room already has two players.',409);
-  room.players.push(player(playerName(name,'Player 2'),hash));return 1;
+  room.players.push(player(playerName(name,'Player 2'),hash,room.mergeMode??'two'));return 1;
 }
 function conclude(room){
   if(room.phase!=='playing')return;
@@ -45,7 +47,7 @@ export function startMatch(room,slot,seed,now=Date.now()){
   if(!['lobby','finished'].includes(room.phase))roomError('A match is already running.',409);
   if(room.players.length!==2||!room.players.every(p=>p.connected))roomError('Wait for both players to connect.',409);
   room.phase='playing';room.round++;room.seed=seed>>>0;room.winner=null;room.reason=null;room.expiresAt=now+ROOM_TTL;
-  for(const p of room.players)Object.assign(p,{status:'playing',score:0,shots:0,highestTile:2,blobs:[],paused:false});
+  for(const p of room.players)Object.assign(p,{status:'playing',score:0,shots:0,highestTile:ruleFor(room.mergeMode).start,blobs:[],paused:false});
 }
 export function chooseBottle(room,slot,bottleId){
   if(slot!==0)roomError('Only the host chooses the bottle.',403);
@@ -55,9 +57,9 @@ export function chooseBottle(room,slot,bottleId){
 export function progress(room,slot,data){
   if(room.phase!=='playing'||room.players[slot].status!=='playing')return false;
   if(data.round!==room.round)roomError('That update belongs to an older round.',409);
-  if(!Number.isSafeInteger(data.score)||data.score<0||data.score>1e9||data.score%4!==0||
+  if(!Number.isSafeInteger(data.score)||data.score<0||data.score>1e9||data.score%(ruleFor(room.mergeMode).count===3?3:4)!==0||
     !Number.isSafeInteger(data.shots)||data.shots<0||data.shots>1e6||
-    !Number.isInteger(data.highestTile)||data.highestTile<2||data.highestTile>4096||(data.highestTile&(data.highestTile-1))||
+    !validValue(data.highestTile,room.mergeMode??'two')||
     typeof data.done!=='boolean'||typeof data.paused!=='boolean'||!Array.isArray(data.blobs)||data.blobs.length>90)roomError('Invalid match update.');
   const blobs=data.blobs.map(b=>{
     if(!b||!Number.isInteger(b.level)||b.level<0||b.level>11||!Number.isFinite(b.x)||!Number.isFinite(b.y)||Math.abs(b.x)>2000||Math.abs(b.y)>2000)roomError('Invalid blob update.');

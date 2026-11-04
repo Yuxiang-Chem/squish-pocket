@@ -28,7 +28,7 @@ with sync_playwright() as p:
             'bottles': {'classic': {'score': 256, 'highestTile': 64}, 'lab-flask': {'score': 1024, 'highestTile': 256}}})
         assert response.ok, response.text()
         page.locator('#menu-achievements').click()
-        expect(page.locator('#achievement-status')).to_have_text('Shared records are up to date.')
+        expect(page.locator('#achievement-status')).to_have_text('Two Combine records are up to date.')
         expect(page.locator('#achievement-tab-classic')).to_have_attribute('aria-selected', 'true')
         original = page.locator('#achievement-page-classic')
         flask = page.locator('#achievement-page-lab-flask')
@@ -81,10 +81,10 @@ with sync_playwright() as p:
             assert page.locator('#achievements-dialog').evaluate('(d)=>d.scrollWidth<=d.clientWidth+1')
         # Refresh and reload retain both personal records.
         page.locator('#achievement-refresh').click()
-        expect(page.locator('#achievement-status')).to_have_text('Shared records are up to date.')
+        expect(page.locator('#achievement-status')).to_have_text('Two Combine records are up to date.')
         page.reload(wait_until='networkidle')
         page.locator('#menu-achievements').click()
-        expect(page.locator('#achievement-status')).to_have_text('Shared records are up to date.')
+        expect(page.locator('#achievement-status')).to_have_text('Two Combine records are up to date.')
         expect(flask.locator('[data-personal-score]')).to_have_text('128')
         assert not errors, errors
         print(json.dumps({'browser': name, 'passed': True, 'checks': ['actual shared records per bottle', 'separate personal bests', 'tabs and arrows', 'touch swipe' if name == 'chromium' else 'keyboard slide', 'keyboard tab navigation', 'phone layouts', 'refresh and reload'], 'browser_errors': errors}))

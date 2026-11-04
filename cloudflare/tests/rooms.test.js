@@ -45,3 +45,13 @@ test('lobby guest may leave without closing the host room; active departure forf
   addPlayer(room,'Another friend','new-hash');connectPlayer(room,1,2000);startMatch(room,0,7,2000);leaveRoom(room,1);
   assert.equal(room.phase,'finished');assert.equal(room.winner,0);
 });
+
+test('Three Combine rooms keep the rule and validate triple scores, tiles and resets',()=>{
+ const room=newRoom('ABC234','Host','classic','hash-host',1000,'three');addPlayer(room,'Guest','hash-guest');connectPlayer(room,0,1000);connectPlayer(room,1,1000);startMatch(room,0,42,2000);
+ assert.equal(publicRoom(room,1).mergeMode,'three');assert.equal(room.players[0].highestTile,1);
+ assert.ok(progress(room,0,{round:1,score:9,shots:3,highestTile:9,blobs:[],done:false,paused:false}));
+ assert.throws(()=>progress(room,1,{round:1,score:4,shots:3,highestTile:4,blobs:[],done:false,paused:false}),/Invalid/);
+ assert.ok(progress(room,0,{round:1,score:9,shots:3,highestTile:9,blobs:[],done:true,paused:false}));
+ assert.ok(progress(room,1,{round:1,score:27,shots:4,highestTile:27,blobs:[],done:true,paused:false}));assert.equal(room.winner,1);
+ startMatch(room,0,43,3000);assert.equal(room.players[0].score,0);assert.equal(room.players[0].highestTile,1);
+});

@@ -69,3 +69,10 @@ Credentials, local hosting bindings, build outputs, and deployment archives are
 excluded from this repository.
 
 An independent project inspired by [Sobosuba](https://sobosuba.com/), with original code, graphics, and branding. It is not an official Sobosuba port and includes no Sobosuba source code or assets.
+
+## Three Combine test mode
+
+On the test site, choose **Three Combine** for 1 → 3 → 9 → 27 merges, or keep
+**Two Combine** for the original rules. Three equal touching blobs form the
+next value. Both rules work with all vessels and multiplayer, with separate
+saved rounds and scoreboards. The Three Combine milestone is 2,187.

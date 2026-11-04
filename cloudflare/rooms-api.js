@@ -17,7 +17,7 @@ export async function roomsAPI(request,env,readBody){
     const data=await readBody(request);
     for(let attempt=0;attempt<3;attempt++){
       const code=Array.from(crypto.getRandomValues(new Uint8Array(6)),n=>alphabet[n%alphabet.length]).join('');
-      const result=await rpc(env.ROOMS.getByName(`match:${code}`),'initialize',{code,name:data.name,bottleId:data.bottleId});
+      const result=await rpc(env.ROOMS.getByName(`match:${code}`),'initialize',{code,name:data.name,bottleId:data.bottleId,mergeMode:data.mergeMode});
       if(result)return response(request,result);
     }
     return Response.json({error:'Please try creating a room again.'},{status:503});

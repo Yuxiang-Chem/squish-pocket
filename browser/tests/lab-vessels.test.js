@@ -6,7 +6,7 @@ import {prepare,measure} from '../dist/softbody.js';
 for(const id of ['separating-funnel','conical-flask']){
   test(`${id} has one opening, a shaped bowl and a closed base`,()=>{
     const g=BOTTLES[id];assert.equal(g.mouths.length,1);
-    if(id==='conical-flask')assert.ok(g.bottleLeftAt(240)<g.bottleLeftAt(140)-25);
+    if(id==='conical-flask')assert.ok(g.bottleLeftAt(300)<g.bottleLeftAt(140)-25);
     else assert.ok(g.bottleLeftAt(120)>g.bottleLeftAt(g.BOTTLE_MOUTH)+20);
     assert.ok(g.contains(180,240));assert.equal(g.contains(20,240),false);
     const p={x:180,y:g.BOTTLE_FLOOR-1,px:180,py:g.BOTTLE_FLOOR-1,bottleSide:true};
@@ -75,5 +75,18 @@ test('outer ready slots can enter both widened funnels at gentle and full force'
     e.shoot(0,power,true,{x:180+(slot-1)*e.vessel.rackSpread,y:58});
     for(let i=0;i<480&&!e.over;i++)e.step(1/120);
     assert.equal(e.over,false,`${id}, slot ${slot}, level ${level}, power ${power}`);assert.ok(e.blobs[0].hasEntered);
+  }
+});
+
+test('doubled conical mouths admit outer slots and preserve saved rounds in both merge modes',()=>{
+  for(const id of ['conical-flask','conical-flask-water'])for(const mode of ['two','three']){
+    const g=BOTTLES[id],m=g.mouths[0];assert.equal(Math.abs(m.b.x-m.a.x),164);assert.equal(g.BOTTLE_VERSION,2);
+    for(const slot of [0,2])for(const power of [0,1])for(const level of [0,4]){
+      const e=new Engine(42,id,mode);e.rack=[{id:1,level:slot===0?level:1},{id:2,level:2},{id:3,level:slot===2?level:3}];e.rackSerial=3;e.selectedId=slot+1;e.syncRack();
+      assert.ok(e.shoot(0,power,true,{x:180+(slot-1)*g.rackSpread,y:58}));for(let i=0;i<480&&!e.over;i++)e.step(1/120);
+      assert.equal(e.over,false,`${id}, ${mode}, slot ${slot}, level ${level}, power ${power}`);assert.ok(e.blobs[0].hasEntered);
+      const snapshot=JSON.parse(JSON.stringify(e));snapshot.bottleVersion=1;
+      const restored=Engine.restore(snapshot);assert.equal(restored.bottleVersion,2);assert.equal(restored.score,e.score);assert.equal(restored.shots,e.shots);assert.equal(restored.mergeMode,mode);
+    }
   }
 });

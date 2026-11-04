@@ -1,11 +1,13 @@
-import {BOTTLES} from './bottles.js?v=52';
-import {radiusFor} from './engine.js?v=52';
-import {RoomClient} from './room-client.js?v=34';
+import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=57';
+import {BOTTLES} from './bottles.js?v=57';
+import {radiusFor} from './engine.js?v=57';
+import {RoomClient} from './room-client.js?v=57';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
 const blobCaption='<span class="blob-caption" aria-hidden="true">•ᴗ•</span>';
 const setPrimaryLabel=(id,label)=>{$(id).innerHTML=`${label} ${blobCaption}`;};
 export function createStartPage(hooks){
+  let rule=CURRENT_RULE;
   let mode='classic',bottleId=hooks.initialBottle,room=null,connected=false,matchKey='',page='home',busy=false;
   const client=new RoomClient({
     getProgress:r=>hooks.getProgress(r),
@@ -15,7 +17,9 @@ export function createStartPage(hooks){
       if(room){hooks.updateMatch(room,connected);renderRoom();}
     },
     onRoom:(r,online)=>{
-      if(!r)return;room=r;connected=online;bottleId=r.bottleId;
+      if(!r)return;
+      if((r.mergeMode??'two')!==rule.id)switchMergeMode(r.mergeMode??'two',r.code);
+      room=r;connected=online;bottleId=r.bottleId;
       hooks.updateMatch(r,online);renderRoom();
       const key=`${r.code}:${r.round}`;
       if(r.phase==='playing'&&key!==matchKey){matchKey=key;setPage('game');hooks.enterMatch(r,online);}
@@ -39,14 +43,14 @@ export function createStartPage(hooks){
       button.disabled=!!room&&(!connected||room.you!==0||!['lobby','finished'].includes(room.phase));
     }
     const saved=hooks.classicStatus(bottleId);
-    setPrimaryLabel('classic-play',saved?'Continue Classic':'Play Classic');
+    setPrimaryLabel('classic-play',saved?`Continue ${rule.id==='three'?'Three Combine':'Classic'}`:`Play ${rule.id==='three'?'Three Combine':'Classic'}`);
     $('classic-save-note').textContent=saved?'Your saved pile is ready. Your other bottles’ rounds stay saved too.':'Each bottle keeps its own saved round.';
   }
   function showSetup(selected){
     mode=selected;$('menu-status').textContent='';
     $('mode-title').textContent=mode==='classic'?'Your own little pace.':'A friendly rivalry.';
-    $('mode-eyebrow').textContent=mode==='classic'?'CLASSIC / JUST YOU':'MULTIPLAYER / TWO LITTLE PILES';
-    $('mode-description').textContent=mode==='classic'?'Choose a bottle and make a little room.':'Pick a bottle, create a private room, and invite a friend. Or enter their code to join.';
+    $('mode-eyebrow').textContent=mode==='classic'?`${rule.id==='three'?'THREE COMBINE':'CLASSIC'} / JUST YOU`:'MULTIPLAYER / TWO LITTLE PILES';
+    $('mode-description').textContent=(rule.id==='three'?'Three Combine · 1 → 3 → 9 → 27. ':'')+(mode==='classic'?'Choose a bottle and make a little room.':'Pick a bottle, create a private room, and invite a friend. Or enter their code to join.');
     $('classic-actions').classList.toggle('hidden',mode!=='classic');$('multiplayer-setup').classList.toggle('hidden',mode!=='multiplayer');
     $('room-forms').classList.toggle('hidden',!!room);$('room-lobby').classList.toggle('hidden',!room);
     $('mode-back').textContent=room?(room.phase==='playing'?'← Leave room · forfeit match':'← Leave room'):'← Choose a mode';
@@ -88,9 +92,38 @@ export function createStartPage(hooks){
     const canvas=$('opponent-canvas'),ctx=canvas.getContext('2d'),g=BOTTLES[room.bottleId];
     ctx.setTransform(2,0,0,2,0,0);ctx.clearRect(0,0,360,420);g.drawBottleBack(ctx);
     ctx.save();ctx.beginPath();g.bottleOutline.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip();
-    for(const b of other.blobs){ctx.fillStyle=colors[b.level];ctx.beginPath();ctx.ellipse(b.x,b.y,radiusFor(b.level)*1.05,radiusFor(b.level)*.95,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#424d3d';ctx.font=`700 ${Math.min(24,radiusFor(b.level)*.55)}px sans-serif`;ctx.textAlign='center';ctx.fillText(2**(b.level+1),b.x,b.y+4);}
+    for(const b of other.blobs){ctx.fillStyle=colors[b.level];ctx.beginPath();ctx.ellipse(b.x,b.y,radiusFor(b.level)*1.05,radiusFor(b.level)*.95,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#424d3d';ctx.font=`700 ${Math.min(24,radiusFor(b.level)*.55)}px sans-serif`;ctx.textAlign='center';ctx.fillText(valueFor(b.level,room.mergeMode??'two'),b.x,b.y+4);}
     ctx.restore();g.drawBottleFront(ctx);$('opponent-title').textContent=`${other.name}’s bottle`;
   }
+  const modeCopy=[...document.querySelectorAll('#mode-home>.menu-footnote,.left-notes>p,.menu-friends span,#mode-classic h2,#mode-classic p,#guide .guide-row p')].map(element=>({element,html:element.innerHTML}));
+  function renderMergeMode(){
+    for(const {element,html} of modeCopy)element.innerHTML=html;
+    $('merge-rule-badge').classList.toggle('hidden',rule.id!=='three');
+    for(const button of document.querySelectorAll('[data-merge-mode]'))button.setAttribute('aria-pressed',String(button.dataset.mergeMode===rule.id));
+    if(rule.id==='three'){
+      $('merge-rule-badge').classList.remove('hidden');
+      document.querySelector('#mode-home>.menu-footnote').textContent='Your Three Combine rounds stay saved separately in this browser.';
+      document.querySelector('.left-notes>p').innerHTML='Bring three matching friends together.<br>Grow 1 → 3 → 9 → 27.<br>See where the pile takes you.';
+      document.querySelectorAll('.menu-friends span').forEach((el,i)=>el.textContent=3**i);
+      $('mode-classic').querySelector('h2').textContent='Three Combine';
+      $('mode-classic').querySelector('p').textContent='Match three equal blobs. Grow 1 → 3 → 9 → 27.';
+      document.querySelector('#guide .guide-row p').textContent='Three ready blobs wait in a row. Tap 1, 2 or 3 to select one. Lift and move a blob to rearrange the row. Three identical ready blobs combine automatically into one next-level blob. A pair stays separate. Incoming values are 1, 3 and 9; merged values can grow to 177,147. Pull down and release to shoot from the selected slot.';
+      document.querySelectorAll('#guide .guide-row p')[2].textContent='Three touching blobs of the same value combine: 1 + 1 + 1 makes 3, then three 3s make 9, and three 9s make 27. A connected chain of three counts, even if the two ends do not touch. Two matching blobs wait for a third. Your target is 2,187; keep going up to 177,147.';
+    }
+  }
+  function switchMergeMode(next,roomCode=null){
+    const state=hooks.switchMergeMode(next);
+    rule=ruleFor(next);bottleId=state.bottleId;
+    if(!roomCode)$('room-name').value=state.profile.name==='A squishy friend'?'':state.profile.name.slice(0,24);
+    const url=new URL(location.href);url.searchParams.set('merge',rule.id);
+    if(roomCode)url.searchParams.set('room',roomCode);else url.searchParams.delete('room');
+    history.replaceState(null,'',url);
+    renderMergeMode();renderBottles();
+  }
+  for(const button of document.querySelectorAll('[data-merge-mode]'))button.onclick=()=>{
+    if(!room&&!busy&&button.dataset.mergeMode!==rule.id)switchMergeMode(button.dataset.mergeMode);
+  };
+  renderMergeMode();
   $('mode-classic').onclick=()=>showSetup('classic');$('mode-multiplayer').onclick=()=>showSetup('multiplayer');
   function requestHome(){
     if(page!=='game'){if(room)showSetup('multiplayer');else setPage('home');return;}
@@ -111,7 +144,7 @@ export function createStartPage(hooks){
     if(room){client.send({type:'bottle',bottleId:button.dataset.bottle});return;}
     bottleId=button.dataset.bottle;renderBottles();
   };
-  $('room-create').onclick=()=>run(()=>client.create($('room-name').value,bottleId));
+  $('room-create').onclick=()=>run(()=>client.create($('room-name').value,bottleId,rule.id));
   $('room-join-form').onsubmit=event=>{event.preventDefault();void run(()=>client.join($('room-name').value,$('room-code-input').value));};
   $('room-code-input').oninput=event=>{event.target.value=event.target.value.toUpperCase().replace(/[^A-Z2-9]/g,'');};
   $('room-start').onclick=()=>client.send({type:'start'});
@@ -131,7 +164,7 @@ export function createStartPage(hooks){
   try{const code=localStorage.getItem('squish-pocket-last-room');if(code){$('room-rejoin').classList.remove('hidden');$('room-rejoin').textContent=`Rejoin room ${code}`;$('room-rejoin').onclick=()=>run(()=>client.open(code));}}catch{}
   for(const button of document.querySelectorAll('[data-bottle]')){const ctx=button.querySelector('canvas').getContext('2d');ctx.scale(.5,.5);BOTTLES[button.dataset.bottle].drawBottleBack(ctx);BOTTLES[button.dataset.bottle].drawBottleFront(ctx);}
   if(new URL(location.href).searchParams.has('teststate')){setPage('game');hooks.showSavedState?.();}
-  else setPage('home');
+  else {setPage('home');const code=new URL(location.href).searchParams.get('room');if(code)void run(()=>client.open(code));}
   return {client,showRoom:()=>showSetup('multiplayer'),publish:()=>client.publish(),resultTitle};
 }
 export function resultTitle(room){

@@ -45,3 +45,24 @@ Two additional choices, **Original bottle · water** and **Three-neck flask · w
 The dry Three-neck flask world board starts fresh after the crowded-neck physics repair. Only new rounds started with this release compete on that board; older saved piles can still resume and improve personal achievements. Original, water-mode, and overall records retain their history. Achievements keeps all five swipeable panels.
 
 The subsequent personal-score reset also clears every dry-flask personal best score, including browser-local bests. Merge milestones, overall history, Original/water scores, and saved piles remain. Only new epoch-2 rounds set fresh dry-flask personal/world scores; resuming an older pile does not re-import its score. Crowded-neck queries now use exact spatial indexes, and partially entered membranes conform to the angled closed glass.
+
+## Three Combine
+
+Choose **Two Combine** or **Three Combine** on the home page. Three Combine
+starts with 1, 3 and 9; three equal touching blobs combine into the next power
+of three (1 → 3 → 9 → 27 … 177,147). A connected chain of three counts; a pair
+alone waits. Three equal ready-row values also combine and refill the row.
+The milestone is 2,187. Both modes support all eight vessels and multiplayer.
+Rooms retain their selected rule, and joining a room switches to its rule.
+Home-page mode changes and cross-rule room joining update in place without
+reloading the document. Each mode restores its own selected bottle and saved
+pile; instructions, ready values, evolution and achievements follow that rule.
+
+Three Combine uses `?merge=three`, separate browser save/profile keys and
+separate shared scoreboards. Existing Two Combine records stay in their
+original keys and tables. Publish candidates to the test site first.
+
+Achievements also has its own Two Combine / Three Combine selector. It browses
+each mode's personal scores, Top 5 boards and milestone without changing the
+active round or multiplayer room. Names, champion pages and messages follow
+the displayed board's mode; reopening Achievements starts with the game mode.

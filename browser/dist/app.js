@@ -1,15 +1,16 @@
-import {createStartPage} from './start-page.js?v=52';
-import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=52';
+import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=57';
+import {createStartPage} from './start-page.js?v=57';
+import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=57';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
-import {RackMotion} from './rack-motion.js?v=52';
-import {isBottleId} from './bottles.js?v=52';
+import {RackMotion} from './rack-motion.js?v=57';
+import {isBottleId} from './bottles.js?v=57';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=52';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=57';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
-import {connectAchievements} from './achievements.js?v=52';
+import {connectAchievements} from './achievements.js?v=57';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
@@ -18,7 +19,8 @@ installShootTouchGuard($('shoot'));
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 setReducedMergeMotion(reducedMotion);
 let page='menu',gameMode='classic',activeRoom=null,roomConnected=false,currentMatchKey='',shownResult='',shell;
-let engine=new Engine(),started=false,paused=false,aimAngle=0,power=.25,pointer=null,aimCancelled=false,keyboardAiming=false;
+let activeRule=CURRENT_RULE;
+let engine=new Engine(undefined,'classic',activeRule.id),started=false,paused=false,aimAngle=0,power=.25,pointer=null,aimCancelled=false,keyboardAiming=false;
 let particles=[],rackRings=[],rackSparks=[],lastTime=performance.now(),accumulator=0,saveElapsed=0,best=0,sound=true,audio=null,lastSound=0;
 let spillReveal=0,endedShown=false,highestSeen=0,storageWarning=false,toastTimer;
 const rackMotion=new RackMotion(reducedMotion);
@@ -27,22 +29,25 @@ const dragMotion=new DragMotion(reducedMotion);
 const dragCanvas=document.createElement('canvas'),dragCtx=dragCanvas.getContext('2d');
 dragCanvas.className='prep-drag-layer';dragCanvas.setAttribute('aria-hidden','true');document.body.append(dragCanvas);
 let previewEngine=null,previewAccumulator=0,previewAge=0;
-const KEY='squish-pocket-v1',SELECTED_BOTTLE='squish-pocket-selected-bottle';
-const saveKey=id=>id==='classic'?KEY:`${KEY}:${id}`;
+const selectedBottleKey=()=>'squish-pocket-selected-bottle'+(activeRule.id==='three'?':three':'');
+function savedBottle(){
+  try{const id=localStorage.getItem(selectedBottleKey());if(isBottleId(id))return id;}catch{}
+  return 'classic';
+}
+const saveKey=id=>saveKeyFor(id,activeRule.id);
 function restoreBottle(id,restoreSound=false){
-  engine=new Engine(undefined,id);started=false;paused=false;
+  engine=new Engine(undefined,id,activeRule.id);started=false;paused=false;
   try{
     const data=JSON.parse(localStorage.getItem(saveKey(id)));
     if(data?.version===1){
       const restored=Engine.restore(data.engine);
-      if(restored?.bottleId===id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
+      if(restored?.bottleId===id&&restored.mergeMode===activeRule.id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
       if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
       if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
     }
   }catch{/* A missing or unavailable save starts a new bottle. */}
 }
-let selectedBottle='classic';
-try{const selected=localStorage.getItem(SELECTED_BOTTLE);if(isBottleId(selected))selectedBottle=selected;}catch{}
+let selectedBottle=savedBottle();
 restoreBottle(selectedBottle,true);
 best=Math.max(best,engine.score);
 highestSeen=Math.max(0,...engine.blobs.map(b=>b.level));
@@ -104,7 +109,7 @@ function newGame(){
   if(gameMode!=='classic')return;
   achievements.observe(engine,best);
   const physics=engine.physics;
-  engine=new Engine(undefined,engine.bottleId);engine.setPhysics(physics);started=true;paused=false;endedShown=false;spillReveal=0;highestSeen=0;
+  engine=new Engine(undefined,engine.bottleId,activeRule.id);engine.setPhysics(physics);started=true;paused=false;endedShown=false;spillReveal=0;highestSeen=0;
   particles=[];rackRings=[];rackSparks=[];aimAngle=0;cancelAim();accumulator=0;
   rackMotion.reset([]);rackMotion.play(engine.rackEvents,engine.rackOrder());
   overlay.classList.add('hidden');unlockAudio();updateHUD();save();canvas.focus({preventScroll:true});
@@ -152,9 +157,9 @@ function updateHUD(){
   engine.rackOrder().forEach((item,i)=>{
     const button=$(`rack-${i}`);button.dataset.blobId=item.id;
     positionChoice(item,i);
-    button.setAttribute('aria-label',`${2**(item.level+1)} blob, pull down to charge a shot, lift up to merge or rearrange`);
+    button.setAttribute('aria-label',`${engine.value(item.level)} blob, pull down to charge a shot, lift up to ${engine.rules.count===3?'rearrange':'merge or rearrange'}`);
     button.setAttribute('aria-pressed',String(item.id===engine.selectedId));button.disabled=!playable();
-    button.title=`Choose ${2**(item.level+1)} to shoot`;
+    button.title=`Choose ${engine.value(item.level)} to shoot`;
   });
   updateShootAvailability();
   $('restart').classList.toggle('hidden',gameMode==='multiplayer');
@@ -165,7 +170,7 @@ function updateHUD(){
   $('sound').setAttribute('aria-pressed',String(sound));
   $('sound').querySelector('use').setAttribute('href',sound?'#i-sound':'#i-muted');
   updateAimUI();
-  canvas.setAttribute('aria-label',`${engine.vessel.name}. Three ready blobs: ${engine.rackOrder().map(b=>2**(b.level+1)).join(', ')}. Selected ${2**(engine.current+1)}. Aim through the opening. Use 1, 2, 3 to select a blob, left and right to aim, up and down for force, space to shoot.`);
+  canvas.setAttribute('aria-label',`${engine.vessel.name}. Three ready blobs: ${engine.rackOrder().map(b=>engine.value(b.level)).join(', ')}. Selected ${engine.value(engine.current)}. Aim through the opening. Use 1, 2, 3 to select a blob, left and right to aim, up and down for force, space to shoot.`);
 }
 function chooseSlot(index){
   if(!playable()||pointer!==null||rackGesture)return;
@@ -192,11 +197,12 @@ function updateAimUI(){
   if(rackGesture?.mode==='charge'){
     $('hint').textContent=aimCancelled?'PULL FARTHER DOWN TO CHARGE · RETURN UP TO CANCEL':`FORCE ${Math.round(power*100)}% · RELEASE TO SHOOT`;
   }else if(rackGesture?.mode==='drag'){
+    if(engine.rules.count===3){$('hint').textContent='LIFT TO REARRANGE · THREE EQUAL BLOBS MAKE ONE';return;}
     $('hint').textContent=rackGesture.mergeTarget?'LOWER ON THE MATCHING BLOB TO MERGE':rackGesture.lifted&&rackGesture.dropIndex!==null?`RELEASE TO PLACE ${['LEFT','IN THE MIDDLE','RIGHT'][rackGesture.dropIndex]} · MATCHING BLOBS MERGE`:rackGesture.blocked?'LIFT TO REARRANGE · RELEASE TO RETURN':'MATCHING CONTACTS MERGE · RELEASE TO RETURN';
   }else if(rackMotion.busy){$('hint').textContent='PREPARING YOUR NEXT BLOBS…';}
   else if(fireGesture)$('hint').textContent=`FORCE ${Math.round(power*100)}% · ↑↓ FORCE · ←→ AIM · RELEASE TO FIRE`;
   else if(aimGesture||keyboardAiming)$('hint').textContent=`FORCE ${Math.round(power*100)}% · RELEASE TO SHOOT`;
-  else $('hint').innerHTML='PULL DOWN TO SHOOT <span>·</span> LIFT UP TO MERGE & REARRANGE';
+  else $('hint').innerHTML=engine.rules.count===3?'PULL DOWN TO SHOOT <span>·</span> LIFT UP TO REARRANGE':'PULL DOWN TO SHOOT <span>·</span> LIFT UP TO MERGE & REARRANGE';
 }
 function updateShootAvailability(){
   // Native disabled buttons can bypass touch handlers on iOS. Guard actions
@@ -267,7 +273,7 @@ function updatePointer(event){
   if(p.y<g.startY-12)g.lifted=true;
   g.dropIndex=g.lifted?insertionIndex(p,g.anchors,g.home.y):null;
   const neighbor=engine.rack[g.dropIndex];
-  g.mergeTarget=!!neighbor&&neighbor.id!==g.id&&neighbor.level===item.level;
+  g.mergeTarget=engine.rules.count===2&&!!neighbor&&neighbor.id!==g.id&&neighbor.level===item.level;
   rackMotion.previewInsertion(g.id,g.mergeTarget?null:g.dropIndex);
   const target=dragOutsideGlass({x:g.x,y:g.y},p,item.body.renderRadius,engine.vessel);
   g.x=target.x;g.y=target.y;g.blocked=target.blocked;
@@ -364,7 +370,7 @@ function updatePhysicsUI(){
   }
 }
 function resetPreview(){
-  previewEngine=new Engine(345);previewEngine.setPhysics(engine.physics);
+  previewEngine=new Engine(345,'classic',activeRule.id);previewEngine.setPhysics(engine.physics);
   previewEngine.blobs=[blob(5,125,engine.vessel.BOTTLE_FLOOR-178+previewEngine.radius(5)+8,150,70)];previewAccumulator=0;previewAge=0;
 }
 $('settings').onclick=()=>{cancelAim();updatePhysicsUI();resetPreview();$('settings-dialog').showModal();};
@@ -374,12 +380,16 @@ document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('clo
 document.addEventListener('visibilitychange',()=>{if(document.hidden){if(playable())pauseGame();else save();cancelAim();}else lastTime=performance.now();});
 window.addEventListener('pagehide',save);
 
+function renderEvolution(){
+$('evolution').replaceChildren();
 for(let level=0;level<=MAX_LEVEL;level++){
   const row=document.createElement('div');row.className='evolution-item';
-  const friend=document.createElement('span');friend.className='evolution-blob';friend.style.background=colors[level];friend.textContent=2**(level+1);
-  const caption=document.createElement('span');caption.textContent=level===0?'a little hello':level===MAX_LEVEL?'4096 · keep growing':'↓';
+  const friend=document.createElement('span');friend.className='evolution-blob';friend.style.background=colors[level];friend.textContent=engine.value(level);if(engine.value(level)>=10000)friend.style.fontSize='7px';
+  const caption=document.createElement('span');caption.textContent=level===0?'a little hello':level===MAX_LEVEL?`${engine.value(MAX_LEVEL).toLocaleString()} · keep growing`:'↓';
   row.append(friend,caption);$('evolution').append(row);
 }
+}
+renderEvolution();
 
 function drawBlob(b,alpha=1,paint=ctx,glow=0){
   const ctx=paint;
@@ -401,7 +411,7 @@ function drawBlob(b,alpha=1,paint=ctx,glow=0){
   ctx.fillStyle='#384031';
   for(const side of [-1,1]){ctx.beginPath();ctx.ellipse(b.x+side*r*.23,b.y-r*.12,Math.max(1.5,r*.055),Math.max(2,r*.07),0,0,Math.PI*2);ctx.fill();}
   ctx.beginPath();ctx.moveTo(b.x-r*.1,b.y+r*.04);ctx.quadraticCurveTo(b.x,b.y+r*.17,b.x+r*.1,b.y+r*.04);ctx.strokeStyle='#384031';ctx.lineWidth=Math.max(1,r*.035);ctx.lineCap='round';ctx.stroke();
-  ctx.font=`700 ${Math.max(9,r*.38)}px Manrope, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#384031cf';ctx.fillText(2**(b.level+1),b.x,b.y+r*.45);
+  ctx.font=`700 ${Math.max(9,r*.38)}px Manrope, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#384031cf';ctx.fillText(engine.value(b.level),b.x,b.y+r*.45);
   ctx.restore();
 }
 const demo=[blob(3,55,388),blob(5,115,375),blob(4,185,382),blob(2,240,391),blob(1,282,393),blob(0,320,395),blob(2,75,348)];
@@ -450,7 +460,7 @@ function drawRack(){
   }
   drawRackBursts();
   engine.rack.forEach(positionChoice);
-  ctx.textAlign='center';ctx.font='600 7px "DM Sans", sans-serif';ctx.fillStyle='#9da58e';ctx.fillText(rackMotion.busy?'PREPARING…':rackGesture?.mode==='charge'?`CHARGING · ${Math.round(power*100)}%`:'LIFT UP · MERGE OR REARRANGE',180,12);
+  ctx.textAlign='center';ctx.font='600 7px "DM Sans", sans-serif';ctx.fillStyle='#9da58e';ctx.fillText(rackMotion.busy?'PREPARING…':rackGesture?.mode==='charge'?`CHARGING · ${Math.round(power*100)}%`:(engine.rules.count===3?'LIFT UP · REARRANGE':'LIFT UP · MERGE OR REARRANGE'),180,12);
   ctx.font='600 6px "DM Sans", sans-serif';ctx.fillText(rackGesture?.mode==='charge'?'RELEASE TO SHOOT · PULL BACK UP TO CANCEL':'PULL DOWN TO CHARGE A SHOT',180,101);
 
 }
@@ -500,7 +510,7 @@ function draw(elapsed=1/60){
   if(started&&(!engine.over||!endedShown)){
     if((keyboardAiming||aimGesture)&&!aimCancelled)drawAimGuide();
     drawRack(elapsed);
-    if(engine.shots===0&&engine.bottleId==='classic'){ctx.font='500 10px "DM Sans", sans-serif';ctx.fillStyle='#99a08b';ctx.fillText(engine.bottleId==='classic'?'Pull a blob down, then release to shoot.':'Aim into a neck, then release to shoot.',WIDTH/2,HEIGHT*.61);ctx.fillText('Lift it up to merge or change its position.',WIDTH/2,HEIGHT*.61+17);}
+    if(engine.shots===0&&engine.bottleId==='classic'){ctx.font='500 10px "DM Sans", sans-serif';ctx.fillStyle='#99a08b';ctx.fillText(engine.bottleId==='classic'?'Pull a blob down, then release to shoot.':'Aim into a neck, then release to shoot.',WIDTH/2,HEIGHT*.61);ctx.fillText(engine.rules.count===3?'Lift it up to rearrange the ready row.':'Lift it up to merge or change its position.',WIDTH/2,HEIGHT*.61+17);}
   }
 }
 function resize(){
@@ -536,7 +546,7 @@ function frame(now){
       for(const event of events){
         const b=event.blob;pop(b.level);
         if(!reducedMotion)for(let k=0;k<10;k++){const angle=k*Math.PI/5;particles.push({x:b.x,y:b.y,vx:Math.cos(angle)*90,vy:Math.sin(angle)*90-40,life:.6,level:b.level});}
-        if(b.level>highestSeen){highestSeen=b.level;if(b.level===MAX_LEVEL)toast('4096! A pocketful of possibility.');}
+        if(b.level>highestSeen){highestSeen=b.level;if(b.level===MAX_LEVEL)toast(`${engine.value(MAX_LEVEL).toLocaleString()}! A pocketful of possibility.`);}
       }
       if(events.length){best=Math.max(best,engine.score);achievements.observe(engine,best);updateHUD();}
       if(engine.over){if(engine.endReason==='spill'){cancelAim();updateHUD();save();}else finish();break;}
@@ -575,14 +585,14 @@ function abandonRound(){
     activeRoom=null;currentMatchKey='';shownResult='';gameMode='classic';
   }
   const physics=engine.physics,id=engine.bottleId;
-  engine=new Engine(undefined,id);engine.setPhysics(physics);
+  engine=new Engine(undefined,id,activeRule.id);engine.setPhysics(physics);
   started=false;paused=false;endedShown=false;particles=[];rackRings=[];rackSparks=[];overlay.classList.add('hidden');
   resetVisuals();save();updateHUD();
 }
 function enterClassic(id){
   cancelAim();if(gameMode==='classic')save();gameMode='classic';activeRoom=null;currentMatchKey='';restoreBottle(id);
   best=Math.max(best,engine.score,achievements.profile.score);resetVisuals();
-  try{localStorage.setItem(SELECTED_BOTTLE,id);}catch{}
+  try{localStorage.setItem(selectedBottleKey(),id);}catch{}
   if(!started||engine.over)newGame();else resume();
   updateHUD();save();
 }
@@ -590,11 +600,11 @@ function enterMatch(room,connected){
   const key=`${room.code}:${room.round}`;
   if(currentMatchKey!==key||gameMode!=='multiplayer'){
     cancelAim();if(gameMode==='classic')save();gameMode='multiplayer';activeRoom=room;currentMatchKey=key;shownResult='';
-    engine=new Engine(room.seed,room.bottleId);engine.setPhysics(playerPhysics());
+    engine=new Engine(room.seed,room.bottleId,room.mergeMode??'two');engine.setPhysics(playerPhysics());
     let restoredSave=false;
     try{
       const data=JSON.parse(localStorage.getItem(`squish-pocket-match:${key}`));
-      if(data?.round===room.round&&data.seed===room.seed){const restored=Engine.restore(data.engine);if(restored?.bottleId===room.bottleId){engine=restored;engine.setPhysics(playerPhysics());restoredSave=true;}}
+      if(data?.round===room.round&&data.seed===room.seed){const restored=Engine.restore(data.engine);if(restored?.bottleId===room.bottleId&&restored.mergeMode===(room.mergeMode??'two')){engine=restored;engine.setPhysics(playerPhysics());restoredSave=true;}}
     }catch{}
     started=true;resetVisuals();
     if(!restoredSave){rackMotion.reset([]);rackMotion.play(engine.rackEvents,engine.rackOrder());}
@@ -616,8 +626,19 @@ function updateMatch(room,connected){
   }
   updateHUD();
 }
+function switchMergeMode(mode){
+  if(mode===activeRule.id)return {bottleId:engine.bottleId,profile:achievements.profile};
+  save();cancelAim();
+  activeRule=ruleFor(mode);best=0;gameMode='classic';activeRoom=null;
+  currentMatchKey='';shownResult='';roomConnected=false;
+  restoreBottle(savedBottle());
+  achievements.setMode(activeRule.id);
+  best=Math.max(best,engine.score,achievements.profile.score);
+  previewEngine=null;overlay.classList.add('hidden');resetVisuals();renderEvolution();updateHUD();
+  return {bottleId:engine.bottleId,profile:achievements.profile};
+}
 shell=createStartPage({
-  initialBottle:engine.bottleId,profile:achievements.profile,cancelAim,showSavedState,
+  initialBottle:engine.bottleId,profile:achievements.profile,cancelAim,showSavedState,switchMergeMode,
   classicStatus:id=>{try{const data=JSON.parse(localStorage.getItem(saveKey(id)));return data?.started===true&&!data.engine?.over;}catch{return false;}},
   onPage:next=>{page=next;dragCanvas.style.display=page==='game'?'':'none';},
   onShown:()=>{fitJar();resize();updateHUD();},
@@ -627,7 +648,7 @@ shell=createStartPage({
   finishRound:()=>{if(gameMode==='multiplayer'&&!engine.over){engine.over=true;engine.endReason=null;finish();}},
   getProgress:room=>{
     if(gameMode!=='multiplayer'||!room||currentMatchKey!==`${room.code}:${room.round}`)return null;
-    save();return {round:room.round,score:engine.score,shots:engine.shots,highestTile:2**(engine.highestLevel+1),done:engine.over,paused:paused||page!=='game',blobs:engine.blobs.slice(0,90).map(b=>({level:b.level,x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10}))};
+    save();return {round:room.round,score:engine.score,shots:engine.shots,highestTile:engine.value(engine.highestLevel),done:engine.over,paused:paused||page!=='game',blobs:engine.blobs.slice(0,90).map(b=>({level:b.level,x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10}))};
   }
 });
 updateHUD();requestAnimationFrame(frame);

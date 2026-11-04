@@ -59,3 +59,14 @@ test('expiry alarm clears the room and invalidates its old session',async()=>{
   const session=await stub.command('session',{token:host});expect(session.status).toBe(410);
   await runInDurableObject(stub,(_instance,state)=>{expect(state.storage.sql.exec('SELECT COUNT(*) AS count FROM room').one().count).toBe(0);});
 });
+
+test('real Three Combine sockets retain their mode through hibernation and accept powers of three',async()=>{
+ const stub=env.ROOMS.getByName(`test:three:${crypto.randomUUID()}`);
+ const host=await stub.command('initialize',{code:'ABC234',name:'Host',bottleId:'classic',mergeMode:'three'}),guest=await stub.command('join',{name:'Guest'});
+ expect(host.ok).toBe(true);const a=await connect(stub,host.data.token),b=await connect(stub,guest.data.token);
+ a.ws.send(JSON.stringify({type:'start'}));let result=await b.wait(m=>m.room?.phase==='playing');expect(result.room.mergeMode).toBe('three');expect(result.room.players[0].highestTile).toBe(1);
+ a.ws.send(JSON.stringify({type:'progress',round:1,score:3,shots:3,highestTile:3,blobs:[],done:true,paused:false}));await b.wait(m=>m.room?.players[0].score===3);
+ await evictDurableObject(stub);
+ b.ws.send(JSON.stringify({type:'progress',round:1,score:9,shots:4,highestTile:9,blobs:[],done:true,paused:false}));
+ result=await a.wait(m=>m.room?.phase==='finished');expect(result.room.mergeMode).toBe('three');expect(result.room.winner).toBe(1);
+});

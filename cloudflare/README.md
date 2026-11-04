@@ -161,3 +161,19 @@ Migration `0007_reset_dry_flask_personal_scores.sql` resets every dry `lab-flask
 The browser clears its dry personal score once when adopting epoch 2, retains the saved round, and excludes older round scores from Personal Best. It ignores personal-score responses explicitly carrying an older epoch during rollout. New round records and offline progress persist normally.
 
 Published on 2026-11-04 as Worker version `14512392-e5ea-4a57-ab1f-1c79202f6f7b` with migration 0007. Production checks confirmed all 8 existing dry-flask personal score rows are zero, with their merge milestones, all other bottle score totals/records, all identities, overall history, and messages unchanged. No stale dry scores or foreign-key violations remained. Live Chromium and WebKit checks confirmed byte-identical solver assets, epoch-2 eligibility, browser personal-score migration, retained Original/water bests, five achievement panels, native Chromium swipe, above-line stability, and no JavaScript errors. Production QA score submissions were intercepted and no production messages were sent.
+
+## Three Combine records and rooms
+
+The default achievements/message APIs use Two Combine. Append `?merge=three`
+for Three Combine, whose scores are multiples of 3 and highest values are
+powers of 3 from 1 through 177,147. Responses include `mergeMode`, `milestone`
+and `reachedMilestone`; the original `reached2048` count remains on Two Combine.
+Top-five records, tied champion ownership, message permissions and daily
+limits are isolated by mode. Migration 0010 adds only `three_` tables, indexes
+and triggers, leaving the original data untouched. SQL table scoping happens
+inside a request-specific D1 wrapper with a fixed identifier allowlist.
+
+Room creation accepts `mergeMode: "two" | "three"` (default `"two"`). The mode
+is fixed for the room, saved through hibernation and published in room state.
+Progress validation uses the room's rule. Older rooms without the field are
+Two Combine rooms.

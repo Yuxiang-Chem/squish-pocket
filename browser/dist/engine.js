@@ -1,12 +1,14 @@
-import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=52';
+import {outlinesTouch} from './preparation-contact.js?v=29';
+import {ruleFor,valueFor,connectedTriples} from './merge-rules.js?v=57';
+import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=57';
 import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
-import {refillRack,hasMatchingNeighbors} from './rack.js?v=29';
-import {bottleFor,isBottleId} from './bottles.js?v=52';
+import {refillRack,hasMatchingNeighbors} from './rack.js?v=57';
+import {bottleFor,isBottleId} from './bottles.js?v=57';
 import {eject} from './ejection.js?v=29';
 import {insertedOrder} from './preparation-gesture.js?v=29';
-import {createWaterState,advanceWater,waterContact} from './water.js?v=52';
-import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=52';
+import {createWaterState,advanceWater,waterContact} from './water.js?v=57';
+import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=57';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;
 export const radiusFor=(level,blobSize=150)=>13*1.2**level*blobSize/100;
 // Matching blobs fuse for MERGE_DELAY seconds before combining; the result then
@@ -19,7 +21,8 @@ export function blob(level,x,y,vx=0,vy=0){
   return {level,x,y,vx,vy,age:0,danger:0,shape:Array(24).fill(0),spring:Array(24).fill(0)};
 }
 export class Engine {
-  constructor(seed=Date.now(),bottleId='classic'){
+  constructor(seed=Date.now(),bottleId='classic',mergeMode='two'){
+    this.mergeMode=ruleFor(mergeMode).id;
     this.bottleId=isBottleId(bottleId)?bottleId:'classic';
     this.bottleVersion=this.vessel.BOTTLE_VERSION;this.recordEpoch=FLASK_RECORD_EPOCH;this.blobs=[];this.score=0;this.shots=0;this.current=0;this.next=1;this.highestLevel=0;
     this.cooldown=0;this.over=false;this.endReason=null;this.seed=seed>>>0;this.fuseSerial=0;
@@ -28,6 +31,8 @@ export class Engine {
     this.rack=[];this.rackSerial=0;this.selectedId=null;this.incoming=this.newIncoming();
     this.rackEvents=refillRack(this,()=>this.newIncoming(),MAX_LEVEL);this.syncRack();
   }
+  get rules(){return ruleFor(this.mergeMode);}
+  value(level){return valueFor(level,this.mergeMode);}
   get vessel(){return bottleFor(this.bottleId);}
   randomUint(){this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed;}
   setPhysics(settings){
@@ -51,7 +56,7 @@ export class Engine {
     const t=Math.min(1,b.grow/MERGE_GROW),start=1/1.2;
     return full*(start+(1-start)*(1-(1-t)**3));
   }
-  random(){return (this.randomUint()>>>8)%5;}
+  random(){return (this.randomUint()>>>8)%this.rules.spawnLevels;}
   newIncoming(){return {level:this.random(),side:(this.randomUint()>>>31)?'left':'right'};}
   syncRack(){
     this.highestLevel=Math.max(this.highestLevel,...this.rack.map(b=>b.level),...this.blobs.map(b=>b.level));
@@ -74,7 +79,7 @@ export class Engine {
     const i=this.rack.findIndex(b=>b.id===sourceId),j=this.rack.findIndex(b=>b.id===targetId);
     if(i<0||j<0)return false;
     const source=this.rack[i],target=this.rack[j],before=this.rack.map(b=>({...b}));
-    if(source.level===target.level&&source.level<MAX_LEVEL){
+    if(this.rules.count===2&&source.level===target.level&&source.level<MAX_LEVEL){
       const result={id:++this.rackSerial,level:source.level+1};
       this.rack=this.rack.filter(b=>b.id!==sourceId);
       this.rack[this.rack.findIndex(b=>b.id===targetId)]=result;this.selectedId=result.id;
@@ -103,6 +108,7 @@ export class Engine {
   mergeRackContacts(pairs,draggedIds=[]){
     if(this.over)return false;
     const eligible=new Set(draggedIds);
+    if(this.rules.count===3)return false;
     for(const {a,b} of pairs){
       if(a===b||(!eligible.has(a)&&!eligible.has(b)))continue;
       const first=this.rack.find(item=>item.id===a),second=this.rack.find(item=>item.id===b);
@@ -120,9 +126,10 @@ export class Engine {
     if(water)advanceWater(this.waterState,dt);
     const bs=this.blobs,delay=instantMerge?0:MERGE_DELAY,pairs=new Map();
     for(const b of bs)if(b.fuse){const list=pairs.get(b.fuse.id);if(list)list.push(b);else pairs.set(b.fuse.id,[b]);}
+    const mergeCount=this.rules.count,contacts=[];
     for(const [id,list] of pairs){
       const [a,b]=list;
-      if(list.length===2&&!a.spilled&&!b.spilled&&a.level===b.level&&a.level<MAX_LEVEL&&Math.hypot(a.x-b.x,a.y-b.y)<this.radius(a.level)*3)continue;
+      if(list.length===mergeCount&&list.every(c=>!c.spilled&&c.level===a.level&&c.level<MAX_LEVEL)&&list.every(c=>list.some(other=>other!==c&&Math.hypot(c.x-other.x,c.y-other.y)<this.radius(c.level)*(mergeCount===3?5:3))))continue;
       for(const c of list)delete c.fuse;pairs.delete(id);
     }
     for(const b of bs){
@@ -132,11 +139,19 @@ export class Engine {
       if(water)waterContact(b,water,this.waterState);
       if(b.ejection&&b.age>b.ejection.relaxation*7)delete b.ejection;
     }
+    // Resting membranes retain a tiny solver gap; include their visible contact
+    // so an arriving third blob can complete a settled or floating chain.
+    if(mergeCount===3)for(let i=0;i<bs.length-1;i++)for(let j=i+1;j<bs.length;j++){const a=bs[i],b=bs[j];if(a.level===b.level&&!a.fuse&&!b.fuse&&!a.spilled&&!b.spilled&&outlinesTouch(a,b,1.5))contacts.push([a,b]);}
     // Fusing partners ignore each other's contact and are drawn together.
-    for(const [a,b] of pairs.values()){
-      a.fuse.time+=dt;b.fuse.time+=dt;
-      const pull=[[a,b],[b,a]].map(([self,other])=>({x:(other.x-self.x)*45-(self.vx-other.vx)*9.5,y:(other.y-self.y)*45-(self.vy-other.vy)*9.5}));
-      [a,b].forEach((self,k)=>{for(const p of self.nodes){p.x+=pull[k].x*dt*dt;p.y+=pull[k].y*dt*dt;}bottleWalls(self);measure(self,dt);});
+    for(const group of pairs.values()){
+      if(group.length===2){
+        const [a,b]=group;a.fuse.time+=dt;b.fuse.time+=dt;
+        const pull=[[a,b],[b,a]].map(([self,other])=>({x:(other.x-self.x)*45-(self.vx-other.vx)*9.5,y:(other.y-self.y)*45-(self.vy-other.vy)*9.5}));
+        group.forEach((self,k)=>{for(const p of self.nodes){p.x+=pull[k].x*dt*dt;p.y+=pull[k].y*dt*dt;}bottleWalls(self);measure(self,dt);});
+      }else{
+        const mean=key=>group.reduce((sum,b)=>sum+b[key],0)/group.length,c={x:mean('x'),y:mean('y'),vx:mean('vx'),vy:mean('vy')};
+        for(const self of group){self.fuse.time+=dt;const ax=(c.x-self.x)*90-(self.vx-c.vx)*19,ay=(c.y-self.y)*90-(self.vy-c.vy)*19;for(const p of self.nodes){p.x+=ax*dt*dt;p.y+=ay*dt*dt;}bottleWalls(self);measure(self,dt);}
+      }
     }
     for(let iteration=0;iteration<5;iteration++){
       for(const b of bs){membrane(b,this.bodyRadius(b),material);bottleWalls(b);measure(b,dt);}
@@ -146,10 +161,12 @@ export class Engine {
         if(!overlap(a,b))continue;
         const ra=this.bodyRadius(a),rb=this.bodyRadius(b);
         const hitA=contact(a,b,ra,rb),hitB=contact(b,a,rb,ra);
-        if((hitA||hitB)&&a.level===b.level&&a.level<MAX_LEVEL&&!a.fuse&&!b.fuse){
+        if((hitA||hitB)&&mergeCount===3)contacts.push([a,b]);
+        if(mergeCount===2&&(hitA||hitB)&&a.level===b.level&&a.level<MAX_LEVEL&&!a.fuse&&!b.fuse){
           const id=++this.fuseSerial;a.fuse={id,time:0};b.fuse={id,time:0};pairs.set(id,[a,b]);
         }
       }
+      if(mergeCount===3)for(const group of connectedTriples(bs,contacts)){const id=++this.fuseSerial;for(const b of group)b.fuse={id,time:0};pairs.set(id,group);}
     }
     for(const b of bs){
       const r=this.bodyRadius(b);
@@ -159,9 +176,10 @@ export class Engine {
       if(b.inBottle!==false&&b.age>2&&b.bounds.minY<FILL_LINE)b.danger+=dt;else b.danger=0;
     }
     const merged=new Set();
-    const events=[...pairs.values()].filter(([a])=>a.fuse.time>=delay-1e-9).map(([a,b])=>{
-      merged.add(a);merged.add(b);
-      const level=a.level+1,n=blob(level,(a.x+b.x)/2,(a.y+b.y)/2,(a.vx+b.vx)*.7,(a.vy+b.vy)*.7),axis=Math.atan2(b.y-a.y,b.x-a.x);
+    const events=[...pairs.values()].filter(([a])=>a.fuse.time>=delay-1e-9).map(group=>{
+      const [a,b]=group;for(const source of group)merged.add(source);
+      const mean=key=>group.reduce((sum,b)=>sum+b[key],0)/group.length;
+      const level=a.level+1,n=blob(level,mean('x'),mean('y'),mean('vx')*1.4,mean('vy')*1.4),axis=Math.atan2(b.y-a.y,b.x-a.x);
       // Start the merged membrane stretched along the pair, then let pressure round it out.
       for(let k=0;k<24;k++)n.shape[k]=.18*Math.cos(2*(k/24*Math.PI*2-axis));
       if(!instantMerge)n.grow=0;
@@ -169,11 +187,11 @@ export class Engine {
       // A larger result still belongs to the same side of the glass. Its new
       // outline can extend below the base before the first wall projection.
       const interior=n.y>=BOTTLE_MOUTH&&insideBottle(n.x,n.y);
-      n.hasEntered=!!(a.hasEntered||b.hasEntered||interior);
+      n.hasEntered=!!(group.some(source=>source.hasEntered)||interior);
       for(const p of n.nodes)p.bottleSide=p.y>=BOTTLE_MOUTH&&(interior||insideBottle(p.x,p.y));
       bottleWalls(n);measure(n,dt);
       this.highestLevel=Math.max(this.highestLevel,level);
-      this.score+=2**(level+1);return {blob:n,value:2**(level+1)};
+      this.score+=this.value(level);return {blob:n,value:this.value(level)};
     });
     if(merged.size)this.blobs=bs.filter(b=>!merged.has(b)).concat(events.map(e=>e.blob));
     separateBodies(this.blobs,b=>this.bodyRadius(b),bottleWalls,6,fused);
@@ -191,6 +209,7 @@ export class Engine {
     }
   }
   static restore(data){
+    if(data?.mergeMode!==undefined&&!['two','three'].includes(data.mergeMode))return null;
     if(data?.recordEpoch!==undefined&&(!Number.isSafeInteger(data.recordEpoch)||data.recordEpoch<0))return null;
     if(data?.bottleId!==undefined&&!isBottleId(data.bottleId))return null;
     if(data?.highestLevel!==undefined&&(!Number.isInteger(data.highestLevel)||data.highestLevel<0||data.highestLevel>MAX_LEVEL))return null;
@@ -209,7 +228,7 @@ export class Engine {
     if(data.rack&&(!Array.isArray(data.rack)||data.rack.length!==3||!data.rack.every(b=>levelOK(b.level)&&Number.isSafeInteger(b.id)&&b.id>0)||new Set(data.rack.map(b=>b.id)).size!==3||!data.rack.some(b=>b.id===data.selectedId)||!Number.isSafeInteger(data.rackSerial)||data.rackSerial<Math.max(...data.rack.map(b=>b.id))||!data.incoming||!Number.isInteger(data.incoming.level)||data.incoming.level<0||data.incoming.level>4||!['left','right'].includes(data.incoming.side)))return null;
     // Three capped values cannot be produced with only three slots and 2–32 entries.
     if(data.rack?.every(b=>b.level===MAX_LEVEL))return null;
-    const restored=Object.assign(new Engine(undefined,data.bottleId??'classic'),data);
+    const restored=Object.assign(new Engine(undefined,data.bottleId??'classic',data.mergeMode??'two'),data);
     restored.recordEpoch=data.recordEpoch??0;
     restored.waterState=createWaterState();
     const {bottleWalls,BOTTLE_VERSION,BOTTLE_FLOOR}=restored.vessel;

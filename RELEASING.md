@@ -161,3 +161,71 @@ and WebKit verified the bottle views and all nine Top 5 boards against the
 real official public API. QA name/score submissions were intercepted and no
 QA messages were sent. Private exports and audit snapshots remain ignored
 inside `.releases/`.
+
+## Three Combine candidate — 2026-11-04
+
+Test version `50680601-b368-4a6e-8a64-07565866a476` adds Three Combine alongside
+Two Combine, with 1 → 3 → 9 → 27 values, connected triple merging, separate
+browser saves and shared boards, and room-specific multiplayer rules. All 178
+game, 33 backend/release and 5 Worker runtime checks passed (216 total).
+Migration 0010 adds only independent `three_` records tables to the test database.
+All 30 deployed assets and both merge-mode achievement APIs matched the source.
+Live Chromium/WebKit checks passed the picker, actual triple merge, reload,
+original score retention, phone layouts and cross-mode room joining with
+remote writes mocked. The official site still serves the approved version 52.
+
+## Double-width conical opening — 2026-11-04
+
+Test version `6d37dd5d-7207-4c5c-afbf-66c4a1f5903c` doubles both conical
+openings from 82 to 164 units and widens the neck-to-cone transition. Geometry
+version 2 preserves saved round statistics in both merge modes. All 179 game,
+33 backend/release and 5 Worker runtime checks passed (217 total). All 30
+deployed assets and both merge-mode APIs matched source. Live Chromium/WebKit
+passed dry/water conical views and phone layouts with record writes mocked.
+
+## Achievement merge-mode selector — 2026-11-04
+
+Test version `56cf2967-cd2f-4bd7-b0a6-258fd78d28c0` adds an in-place
+Two Combine / Three Combine selector inside Achievements. Personal scores,
+names, Top 5 boards, milestones, champion pages and messages follow the
+displayed rule while the running game keeps its own rule and HUD. Bottle
+selection now stays stable during programmatic slides, including WebKit.
+All 180 game, 33 backend/release and 5 Worker runtime checks passed (218 total).
+All 30 assets and both achievement APIs matched source. Live Chromium/WebKit
+passed all nine boards, independent names/scores, champion/message flows,
+phone layouts and touch/keyboard browsing with remote writes mocked. No new
+database migration was needed; this remains a test candidate.
+
+## Smooth gameplay mode switching — 2026-11-04
+
+Test version `d0dd2d02-8f68-4989-bc7e-0b2d9e56f7f4` (assets v57) removes
+document reloads when choosing a merge rule or joining a room with another
+rule. The game restores the chosen rule's vessel and saved pile, updates
+instructions/evolution/HUD in place, and reuses its separate achievement
+identity. All 218 automated checks passed, and all 30 assets plus both
+achievement APIs matched source. Live Chromium/WebKit verified repeated
+switches and cross-rule room joining with no document reloads or errors;
+saved scores, shot counts, identities and personal boards stayed separate.
+Actual triple merging and achievement/champion/message regressions passed
+locally in both browsers. All shared QA writes were mocked. No new migration
+was needed; this is a test-only candidate.
+
+## Three Combine official promotion — 2026-11-04
+
+Approved test `d0dd2d02-8f68-4989-bc7e-0b2d9e56f7f4` was promoted as official
+Worker `82dfcb73-d45d-41c3-8535-57f6ccb18f0f` (assets v57). Its fingerprint
+matches the exact test candidate that passed 218 automated checks. All 30
+official assets and both achievement APIs were verified against source.
+
+The official backup passed SQLite integrity and foreign-key checks. The only
+pending migration, 0010, was rehearsed against that backup and added seven
+independent Three Combine tables. Full pre/post exports then confirmed every
+row in every existing table remained identical, including 28 players, 66
+bottle scores, 7 current dry-flask scores, all record holders and messages.
+The new Three Combine tables were empty; no test scores were copied.
+
+Live Chromium/WebKit verified seven in-place switches, independent identities
+and saves, cross-rule room joining, both achievement/champion/message flows,
+all nine boards per rule against real public API snapshots, and widened dry
+and water conical openings. All QA writes and room sockets were mocked or
+blocked. Private backups and preservation reports remain ignored in `.releases/`.

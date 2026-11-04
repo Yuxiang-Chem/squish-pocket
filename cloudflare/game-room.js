@@ -22,16 +22,16 @@ export class GameRoom extends DurableObject {
     const next=structuredClone(this.room);if(expireDisconnects(next)){this.commit(next);this.broadcast();}
     return this.room;
   }
-  async initialize(code,name,bottleId){
+  async initialize(code,name,bottleId,mergeMode='two'){
     const token=crypto.randomUUID(),tokenHash=await hash(token);
     if(this.room&&this.room.expiresAt>Date.now())return null;
-    this.commit(newRoom(code,name,bottleId,tokenHash));await this.syncAlarm();
+    this.commit(newRoom(code,name,bottleId,tokenHash,Date.now(),mergeMode));await this.syncAlarm();
     return {code,token};
   }
   async command(action,data={}){
     try{
       let result;
-      if(action==='initialize')result=await this.initialize(data.code,data.name,data.bottleId);
+      if(action==='initialize')result=await this.initialize(data.code,data.name,data.bottleId,data.mergeMode);
       else if(action==='join')result=await this.join(data.name,data.token);
       else if(action==='session')result=await this.session(data.token);
       else if(action==='leave')result=await this.leave(data.token);

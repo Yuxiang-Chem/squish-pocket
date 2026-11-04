@@ -239,3 +239,39 @@ Published on 2026-11-04 as Worker version `14512392-e5ea-4a57-ab1f-1c79202f6f7b`
 - Promoted exact test `d30afa02-c061-49cb-8988-5a517239864d` to official Worker `fee21e1b-99d7-4127-9888-893134a081d8`. All 29 assets matched the verified source; the test candidate had passed 205 automated checks.
 - The pre-release official SQL export was valid, and both pending migrations (0008/0009) preserved every row in a local rehearsal. Live pre/post snapshots then confirmed exact preservation of all 28 player rows, 58 bottle-score rows, 7 fresh dry-flask rows, overall and bottle record holders, and message history. No foreign-key violations occurred.
 - Live Chromium and WebKit passed all nine leaderboard comparisons against official public API data and the current funnel views without browser errors. QA writes were intercepted; no test identities, scores or messages were submitted to official.
+
+## Three Combine candidate — 2026-11-04
+
+- Added a separate home-page merge rule for Classic and multiplayer. Three equal touching/connected blobs merge into the next power of 3, starting at 1 and capped at 177,147. Pairs stay separate; ready-row merging also requires three. The achievement milestone is 2,187.
+- Added independent browser save/profile keys and per-request API mode scoping. Migration 0010 creates separate Three Combine tables only. Regression checks prove old identities, scores and champions remain unchanged, and mode-specific score validation and leaderboard/message permissions work.
+- Core checks cover 1+1+1→3, 3+3+3→9, 9+9+9→27, disconnected groups, a fourth blob remaining, delayed fusion/save/reload, ordinary dry/water play, ready refill and old-save compatibility.
+- Mobile Chromium/WebKit passed the mode picker, actual triple merge, save/reload, original score retention, milestone/labels, 320–430px layouts and automatic rule switching when joining a room. Runtime sockets passed Three Combine scoring, winner selection and hibernation persistence.
+- Published test version `50680601-b368-4a6e-8a64-07565866a476`: all 216 automated checks passed, including five real Worker runtime socket tests. All 30 assets matched source and live read-only API checks confirmed separate Two/Three boards and 2,048/2,187 milestones. Live Chromium/WebKit passed switching, actual 1+1+1 merge, save/reload, original scores, mobile layouts and cross-mode room joining with all record/room/WebSocket writes mocked. Official version 52 was confirmed unchanged.
+
+## Double-width conical opening — 2026-11-04
+
+- Conical flask and Conical flask · water now have a 164-unit mouth (previously 82), with a widened neck and a smooth transition into the cone.
+- Geometry version 2 fits older conical saves while retaining score, shots and merge mode. Targeted checks cover both outer launcher slots at gentle/full force in both merge modes and wet/dry variants, as well as existing centered shots, containment and water behavior.
+- Mobile Chromium and WebKit verified all four mode/variant combinations, exact mouth width and 320–430px layouts without browser errors. Remote record writes were mocked.
+- Published test version `6d37dd5d-7207-4c5c-afbf-66c4a1f5903c`: all 217 automated checks passed (179 game, 33 backend/release and 5 Worker runtime). All 30 deployed assets and both achievement APIs matched source. Live Chromium and WebKit confirmed the doubled opening for dry/water conical flasks in both merge modes, with no browser errors or remote record writes.
+
+## Achievement merge-mode selector — 2026-11-04
+
+- Achievements can browse Two Combine and Three Combine in place, retaining the selected bottle and the running game. Each mode uses its own identity, local progress, API requests, personal scores, Top 5 boards and 2,048/2,187 milestone.
+- Champion pages, optional naming, refresh and record messages follow the displayed board's mode. The game HUD and automatic celebrations continue to use the running game's mode. Requests reject responses from another mode.
+- A WebKit timing check exposed bottle selection moving during an unfinished programmatic slide. Navigation now retains the requested destination through the animation; pointer/wheel gestures take over normally.
+- Local Chromium and WebKit passed all nine Three Combine Top 5 boards, both sets of names/scores, optional champion naming, intercepted messages, phone widths and preservation of the current game and URL. All shared QA writes were mocked.
+- Published and verified test version `56cf2967-cd2f-4bd7-b0a6-258fd78d28c0` (assets v56): all 218 automated checks passed (180 game, 33 backend/release and 5 Worker runtime). All 30 deployed assets and both achievement APIs matched source. Live Chromium/WebKit passed the complete mode flow, native Chromium touch swipe, WebKit keyboard slide and last-tab navigation without browser errors or real record/message writes. No new migration was required.
+
+## Smooth gameplay mode switching — 2026-11-04
+
+- Home-page Two/Three Combine selection and cross-rule room joining now update in place using history replacement. Game rule, selected vessel, saved pile, HUD, ready values, evolution, guide and menu copy switch together. Two-mode instructions restore when switching back.
+- Achievements reuses each mode's existing tracker and identity as the gameplay rule changes. In-flight responses stay with their original tracker, while automatic milestones and champion notifications follow only the active game. Names, scores and message permissions remain separate.
+- Local Chromium/WebKit passed seven consecutive switches with no document requests, unchanged `performance.timeOrigin` and a surviving page object. Both saved piles retained their mode, vessel, score and shot count; identities and personal scores stayed separate. Cross-rule room joining retained the page and authenticated connection. The complete achievement suite also passed in both browsers with all shared writes mocked.
+- Published test version `d0dd2d02-8f68-4989-bc7e-0b2d9e56f7f4` (assets v57): all 218 automated checks passed; all 30 assets and both achievement APIs matched source. Live Chromium/WebKit repeated seven switches and cross-rule room joining without document reloads or browser errors, while preserving identities, selected vessels, saved scores and shot counts. Actual triple merge/save/reload and the full achievement/champion/message regression suites passed locally in both browsers. Shared QA writes were mocked; no new migration was required.
+
+## Three Combine official release — 2026-11-04
+
+- Approved exact test `d0dd2d02-8f68-4989-bc7e-0b2d9e56f7f4` promoted to official `82dfcb73-d45d-41c3-8535-57f6ccb18f0f`. All 30 assets and both mode APIs matched source; the candidate passed 218 automated checks.
+- Private pre/post database exports confirmed exact preservation of every existing table row, including all 28 players, 66 bottle scores, 7 current dry-flask scores, record ownership and message history. Migration 0010 added only seven empty Three Combine tables, with no foreign-key violations or copied test records.
+- Live Chromium/WebKit passed seven switches without document reloads, independent saves/names/scores, cross-rule rooms, champion/message flows, phone layouts, conical mouth widths and all 18 Top 5 boards compared with real public API snapshots. Every QA write and room socket was intercepted or blocked.

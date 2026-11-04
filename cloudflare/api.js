@@ -1,11 +1,15 @@
+import {ruleFor,validValue} from '../browser/dist/merge-rules.js';
 import {roomsAPI} from './rooms-api.js';
 import {FLASK_RECORD_EPOCH} from '../browser/dist/record-epoch.js';
 const RECIPIENT = 'chem.xjtlu@gmail.com';
 const RECORD = 'SELECT players.* FROM players JOIN world_record ON world_record.player_id = players.id WHERE world_record.slot = 1';
 const BOTTLE_IDS = ['classic', 'lab-flask', 'classic-water', 'lab-flask-water', 'separating-funnel', 'conical-flask', 'separating-funnel-water', 'conical-flask-water'];
 const BOTTLE_NAMES = {all: 'All bottles', classic: 'Original bottle', 'lab-flask': 'Three-neck flask', 'classic-water': 'Original bottle · water', 'lab-flask-water': 'Three-neck flask · water', 'separating-funnel': 'Separating funnel', 'conical-flask': 'Conical flask', 'separating-funnel-water': 'Separating funnel · water', 'conical-flask-water': 'Conical flask · water'};
-const validScore = score => Number.isSafeInteger(score) && score >= 0 && score <= 1000000000 && score % 4 === 0;
-const validTile = tile => Number.isInteger(tile) && tile >= 2 && tile <= 4096 && !(tile & (tile - 1));
+const validScoreFor = (score,rule) => Number.isSafeInteger(score) && score >= 0 && score <= 1000000000 && score % (rule.count===3?3:4) === 0;
+const validTileFor=(tile,rule)=>validValue(tile,rule.id);
+function scopedRecords(db){
+  return {prepare(sql){return db.prepare(sql.replace(/\b(players|world_record|bottle_scores|bottle_records|record_messages|bottle_messages|flask_current_scores)\b/g,name=>'three_'+name));},batch(statements){return db.batch(statements);}};
+}
 const json = (body, status = 200) => Response.json(body, {status, headers: {
   'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'
 }});
@@ -47,8 +51,9 @@ function bottleLeaders(db,id){
 }
 const publicLeaders=(rows,playerId)=>rows.map((row,i)=>({rank:i+1,name:row.name,score:row.score,highestTile:row.highestTile,isYou:row.player_id===playerId}));
 async function summary(env, playerId) {
+  const rule=env.mergeRule??ruleFor();
   const results = await env.ACHIEVEMENTS.batch([
-    env.ACHIEVEMENTS.prepare('SELECT COUNT(*) AS count FROM players WHERE highest_tile >= 2048'),
+    env.ACHIEVEMENTS.prepare('SELECT COUNT(*) AS count FROM players WHERE highest_tile >= ?').bind(rule.milestone),
     env.ACHIEVEMENTS.prepare(RECORD),
     env.ACHIEVEMENTS.prepare('SELECT MAX(highest_tile) AS tile FROM players'),
     env.ACHIEVEMENTS.prepare('SELECT best_score AS score, highest_tile AS highestTile FROM players WHERE id = ?').bind(playerId ?? ''),
@@ -73,16 +78,16 @@ async function summary(env, playerId) {
     return [id, {record: record ? {name: record.name, score: record.score, highestTile: record.highestTile} : null,
       leaderboard:publicLeaders(results[10+index].results,playerId),
       isRecordHolder: !!record && record.player_id === playerId,
-      highestTile: (id === 'lab-flask' ? results[7].results[0]?.tile : results[5].results.find(row => row.bottle_id === id)?.tile) ?? 2,
+      highestTile: (id === 'lab-flask' ? results[7].results[0]?.tile : results[5].results.find(row => row.bottle_id === id)?.tile) ?? rule.start,
       ...(id === 'lab-flask' ? {recordEpoch: FLASK_RECORD_EPOCH,
-        ...(playerId ? {recordPersonal: results[8].results[0] ?? {score: 0, highestTile: 2}} : {})} : {}),
+        ...(playerId ? {recordPersonal: results[8].results[0] ?? {score: 0, highestTile:rule.start}} : {})} : {}),
       ...(playerId ? {personal: {score: id==='lab-flask'?(results[8].results[0]?.score??0):(personal?.score??0), highestTile: personal?.highestTile??2}} : {})}];
   }));
   return {
-    bottles,
+    bottles,mergeMode:rule.id,milestone:rule.milestone,reachedMilestone:results[0].results[0].count,
     leaderboard:publicLeaders(results[9].results,playerId),
-    reached2048: results[0].results[0].count,
-    highestTile: results[2].results[0].tile ?? 2,
+    ...(rule.id==='two'?{reached2048:results[0].results[0].count}:{}),
+    highestTile: results[2].results[0].tile ?? rule.start,
     record: winner ? {name: winner.name, score: winner.best_score, highestTile: winner.highest_tile} : null,
     isRecordHolder: !!winner && winner.id === playerId,
     ...(playerId ? {personal: results[3].results[0]} : {}),
@@ -91,6 +96,7 @@ async function summary(env, playerId) {
 }
 
 async function submit(request, env) {
+  const rule=env.mergeRule??ruleFor(),validScore=score=>validScoreFor(score,rule),validTile=tile=>validTileFor(tile,rule);
   const {id, hash} = await identity(request), data = await body(request);
   const {score, highestTile} = data;
   const name = typeof data.name === 'string' ? data.name.trim() : '';
@@ -173,7 +179,7 @@ async function sendMessage(request, env) {
       await env.ACHIEVEMENTS.prepare('SELECT p.name, s.highest_tile FROM players p JOIN bottle_scores s ON s.player_id = p.id WHERE p.id = ? AND s.bottle_id = ?').bind(id, bottle).first();
     const text = `Squish Pocket record holder: ${player.name}\nBottle: ${BOTTLE_NAMES[bottle]}\nHighest score: ${score}\nHighest tile: ${player.highest_tile}\n${replyTo ? `Reply email: ${replyTo}\n` : ''}\n${message}`;
     const result = await env.EMAIL.send({from: env.EMAIL_FROM, to: RECIPIENT,
-      ...(replyTo ? {replyTo} : {}), subject: `Squish Pocket · ${BOTTLE_NAMES[bottle]} record holder (${score})`,
+      ...(replyTo ? {replyTo} : {}), subject: `Squish Pocket${env.mergeRule?.count===3?' · Three Combine':''} · ${BOTTLE_NAMES[bottle]} record holder (${score})`,
       text, html: `<div style="white-space:pre-wrap">${escapeHTML(text)}</div>`});
     if (!result?.messageId) throw new Error('Email provider did not accept the message');
   } catch {
@@ -183,7 +189,7 @@ async function sendMessage(request, env) {
   }
   try { await env.ACHIEVEMENTS.prepare(`UPDATE ${table} SET status = 'sent' WHERE id = ?`).bind(messageId).run(); }
   catch { console.error(JSON.stringify({event: 'record_email_status_failed'})); }
-  return json({sent: true, bottle});
+  return json({sent: true, bottle,mergeMode:env.mergeRule?.id??'two'});
 }
 
 export default {
@@ -195,6 +201,8 @@ export default {
       if ((origin && origin !== url.origin) || request.headers.get('Sec-Fetch-Site') === 'cross-site') fail('Please use the game to access achievements.', 403);
       if (url.pathname==='/api/rooms'||url.pathname.startsWith('/api/rooms/')) return await roomsAPI(request,env,body);
       if (!env.ACHIEVEMENTS) fail('Shared achievements are not available yet.', 503);
+      const mode=url.searchParams.get('merge')??'two';if(!['two','three'].includes(mode))fail('Choose a valid merge mode.',400);
+      const rule=ruleFor(mode);env={...env,mergeRule:rule,...(rule.count===3?{ACHIEVEMENTS:scopedRecords(env.ACHIEVEMENTS)}:{})};
       if (url.pathname === '/api/achievements') {
         if (request.method === 'GET') return json(await summary(env));
         if (request.method === 'POST') return await submit(request, env);

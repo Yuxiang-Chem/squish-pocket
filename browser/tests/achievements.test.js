@@ -3,6 +3,37 @@ import assert from 'node:assert/strict';
 import {Engine} from '../dist/engine.js';
 import {loadProfile, captureProgress, roundRecords, canMessage, newlyWonBottles, Achievements} from '../dist/achievements.js';
 
+test('concurrent achievement modes keep identities, requests, milestones and storage separate', async t => {
+  const values=new Map(),sent=[];
+  for(const [key,value] of Object.entries({localStorage:{getItem:k=>values.get(k),setItem:(k,v)=>values.set(k,v)},window:{addEventListener(){}}})){
+    const original=Object.getOwnPropertyDescriptor(globalThis,key);
+    Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
+    t.after(()=>{if(original)Object.defineProperty(globalThis,key,original);else delete globalThis[key];});
+  }
+  t.mock.method(globalThis,'fetch',async(path,options)=>{
+    sent.push({path,id:options.headers['X-Player-Id'],...JSON.parse(options.body)});
+    return Response.json({mergeMode:path.includes('merge=three')?'three':'two',bottles:{}});
+  });
+  let twoMilestones=0,threeMilestones=0;
+  const two=new Achievements({mergeMode:'two',canCelebrate:()=>false,onMilestone:()=>twoMilestones++});
+  const three=new Achievements({mergeMode:'three',canCelebrate:()=>false,onMilestone:()=>threeMilestones++});
+  const original=new Engine(7),triple=new Engine(7,'conical-flask','three');
+  original.score=4096;original.highestLevel=10;triple.score=2187;triple.highestLevel=7;
+  two.observe(original,4096);three.observe(triple,2187);
+  assert.equal(twoMilestones,1);assert.equal(threeMilestones,1);
+  assert.notEqual(two.profile.id,three.profile.id);
+  await Promise.all([two.sync(true),three.sync(true)]);
+  await three.rename('Triple friend');
+  assert.deepEqual(sent.map(s=>s.path),['/api/achievements','/api/achievements?merge=three','/api/achievements?merge=three']);
+  assert.equal(sent[0].id,two.profile.id);assert.equal(sent[1].id,three.profile.id);
+  assert.equal(new Achievements({mergeMode:'two'}).profile.score,4096);
+  const restored=new Achievements({mergeMode:'three'});
+  assert.equal(restored.profile.score,2187);assert.equal(restored.profile.highestTile,2187);assert.equal(restored.profile.name,'Triple friend');
+  t.mock.method(globalThis,'fetch',async()=>Response.json({mergeMode:'two'}));
+  assert.equal(await three.sync(true),null);assert.match(three.error,/another merge mode/);
+  assert.equal(three.profile.score,2187);
+});
+
 test('personal achievements survive new rounds and restored games preserve peak merge', () => {
   const engine = new Engine(123);
   engine.rack = [{id:1,level:9},{id:2,level:9},{id:3,level:0}]; engine.rackSerial = 3;
