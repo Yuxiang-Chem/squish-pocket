@@ -76,3 +76,15 @@ On the test site, choose **Three Combine** for 1 → 3 → 9 → 27 merges, or k
 **Two Combine** for the original rules. Three equal touching blobs form the
 next value. Both rules work with all vessels and multiplayer, with separate
 saved rounds and scoreboards. The Three Combine milestone is 2,187.
+
+### Milestone totals
+
+Achievements shows both unique players reaching the milestone and the total
+number of milestone blobs created (2,048 in Two Combine; 2,187 in Three Combine).
+The total counts repeated bottle and ready-row merges from this update onward;
+old high scores cannot reconstruct historic merge counts. Existing boards stay
+unchanged. Per-round UUIDs and monotonic counts prevent reloads, upload retries
+and repeated submissions from inflating the total. Offline progress is saved
+locally and uploaded in batches of at most 50 rounds. Three Combine totals use
+the current achievement epoch, so archived rounds cannot refill a fresh season.
+Migration `0012_milestone_totals.sql` only adds tables; it resets no records.

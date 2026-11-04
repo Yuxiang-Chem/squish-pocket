@@ -58,9 +58,12 @@ async function verifySite(target,digest){
   const response=await fetch(target.url+'/api/achievements',{signal:AbortSignal.timeout(30000)});
   const summary=await response.json();
   const boards=[summary,...Object.values(summary.bottles??{})];
+  const validTotals=s=>Number.isSafeInteger(s.totalMilestones)&&s.totalMilestones>=0&&Number.isSafeInteger(s.milestoneTrackingSince)&&s.milestoneTrackingSince>0;
+  if(!validTotals(summary))throw new Error('The milestone total is not ready.');
   if(!boards.every(board=>Array.isArray(board.leaderboard)&&board.leaderboard.length<=5&&board.leaderboard.every((row,i)=>row.rank===i+1&&row.score>0)))throw new Error('The top-five achievement boards are not ready.');
   if(!response.ok||!['classic','lab-flask','classic-water','lab-flask-water','separating-funnel','conical-flask','separating-funnel-water','conical-flask-water'].every(id=>summary.bottles?.[id])||summary.bottles['lab-flask'].recordEpoch!==FLASK_RECORD_EPOCH)throw new Error('The deployed achievement API is not ready.');
   const tripleResponse=await fetch(target.url+'/api/achievements?merge=three',{signal:AbortSignal.timeout(30000)}),triple=await tripleResponse.json();
+  if(!validTotals(triple))throw new Error('The Three Combine milestone total is not ready.');
   if(!tripleResponse.ok||triple.achievementEpoch!==THREE_RECORD_EPOCH||triple.announcement?.expiresAt-triple.announcement?.publishedAt!==172800000||triple.mergeMode!=='three'||triple.milestone!==2187||!Array.isArray(triple.leaderboard)||!Object.keys(summary.bottles).every(id=>Array.isArray(triple.bottles?.[id]?.leaderboard)))throw new Error('The Three Combine boards are not ready.');
 }
 async function main(){

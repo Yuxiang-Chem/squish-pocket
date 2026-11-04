@@ -11,6 +11,7 @@ export function refillRack(state,nextIncoming,maxLevel=11){
     }
     if(pair){
       const i=pair[0],sources=pair.map(j=>state.rack[j]),a=sources[0],result={id:++state.rackSerial,level:a.level+1};
+      state.countMilestone?.(result.level);
       const before=state.rack.map(b=>({...b}));
       state.rack.splice(i,count,result);
       if(sources.some(b=>b.id===previousSelection))previousSelection=result.id;

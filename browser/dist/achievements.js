@@ -1,7 +1,8 @@
-import {renderThreeAnnouncement} from './announcement.js?v=61';
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=61';
-import {BOTTLES} from './bottles.js?v=61';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=61';
+import {renderThreeAnnouncement} from './announcement.js?v=62';
+import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=62';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=62';
+import {BOTTLES} from './bottles.js?v=62';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=62';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
@@ -40,8 +41,11 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
   profile ??= {id: crypto.randomUUID(), token: crypto.randomUUID(), name: 'A squishy friend',mergeMode:rule.id,score: 0, highestTile:rule.start, bottles: {}, recordCelebrations: {}};
   if(rule.id==='three'&&profile.achievementEpoch!==THREE_RECORD_EPOCH){
     profile.score=0;profile.highestTile=1;profile.bottles={};profile.recordCelebrations={};delete profile.flaskRecord;
+    delete profile.milestoneRuns;delete profile.milestoneSynced;
   }
   profile.achievementEpoch=achievementEpochFor(rule.id);
+  const runs={},synced={};mergeMilestoneRuns(runs,profile.milestoneRuns);mergeMilestoneRuns(synced,profile.milestoneSynced);
+  profile.milestoneRuns=runs;profile.milestoneSynced=synced;
   if(profile.flaskRecord?.epoch!==FLASK_RECORD_EPOCH||!validRecord(profile.flaskRecord,rule.id)){
     delete profile.flaskRecord;delete profile.recordCelebrations['lab-flask'];
     if(profile.bottles['lab-flask'])profile.bottles['lab-flask'].score=0;
@@ -54,6 +58,7 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
       const saved = JSON.parse(storage.getItem(saveKeyFor(id,rule.id)));
       const engine = saved?.engine;
       if (saved?.version !== 1 || (engine?.bottleId ?? 'classic') !== id || (engine?.mergeMode??'two')!==rule.id || !recordEligible(engine)) continue;
+      mergeMilestoneRuns(profile.milestoneRuns,{[engine.milestoneRun]:engine.milestoneCount});
       const levels = [...(engine.blobs ?? []), ...(engine.rack ?? [])].map(b => b.level).filter(n => Number.isInteger(n) && n >= 0 && n <= 11);
       const highestTile = valueFor(Math.max(0,engine.highestLevel??0,...levels),rule.id);
       const eligible=id!=='lab-flask'||engine.recordEpoch===FLASK_RECORD_EPOCH;
@@ -67,6 +72,8 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
 
 export function captureProgress(profile, engine, personalBest = engine.score) {
   if((profile.mergeMode??'two')!==(engine.mergeMode??'two')||!recordEligible(engine))return false;
+  profile.milestoneRuns??={};
+  const milestoneChanged=mergeMilestoneRuns(profile.milestoneRuns,{[engine.milestoneRun]:engine.milestoneCount});
   const score = Math.max(profile.score, engine.score, personalBest);
   const highestTile = Math.max(profile.highestTile, valueFor(engine.highestLevel,engine.mergeMode??'two'));
   const previous = profile.bottles?.[engine.bottleId];
@@ -77,7 +84,7 @@ export function captureProgress(profile, engine, personalBest = engine.score) {
   if (Object.hasOwn(BOTTLES, engine.bottleId)) mergeRecords(profile, {[engine.bottleId]: {score: bottleScore, highestTile: valueFor(engine.highestLevel,engine.mergeMode??'two')}});
   const fresh=engine.bottleId==='lab-flask'&&engine.recordEpoch===FLASK_RECORD_EPOCH&&
     mergeFlaskRecord(profile,{epoch:FLASK_RECORD_EPOCH,score:engine.score,highestTile:valueFor(engine.highestLevel,engine.mergeMode??'two')});
-  return changed||fresh;
+  return changed||fresh||milestoneChanged;
 }
 
 export function roundRecords(profile, summary, engine) {
@@ -112,7 +119,18 @@ export class Achievements {
     window.addEventListener('online', () => { void this.sync(true); });
   }
   persist() {
-    try { localStorage.setItem(profileKeyFor(this.rule.id), JSON.stringify(this.profile)); return true; } catch { return false; }
+    try {
+      // Preserve another tab's offline merges when either tab saves its profile.
+      let stored;try{stored=JSON.parse(localStorage.getItem(profileKeyFor(this.rule.id)));}catch{}
+      if(stored?.id===this.profile.id&&stored.token===this.profile.token&&stored.achievementEpoch===this.profile.achievementEpoch){
+        mergeMilestoneRuns(this.profile.milestoneRuns,stored.milestoneRuns);
+        mergeMilestoneRuns(this.profile.milestoneSynced,stored.milestoneSynced);
+        if(validRecord(stored,this.rule.id)){
+          this.profile.score=Math.max(this.profile.score,stored.score);this.profile.highestTile=Math.max(this.profile.highestTile,stored.highestTile);
+        }
+      }
+      localStorage.setItem(profileKeyFor(this.rule.id), JSON.stringify(this.profile)); return true;
+    } catch { return false; }
   }
   observe(engine, best) {
     const before = this.profile.highestTile;
@@ -144,12 +162,18 @@ export class Achievements {
     const operation = (async () => {
       try {
         if (!this.storageAvailable) throw new Error('Browser saving is unavailable. Enable it to join shared achievements.');
+        this.storageAvailable=this.persist();
+        if(!this.storageAvailable)throw new Error('Browser saving is unavailable. Enable it to join shared achievements.');
         const snapshot = {name: this.profile.name, score: this.profile.score, highestTile: this.profile.highestTile, bottles: structuredClone(this.profile.bottles),
+          milestoneRuns:Object.fromEntries(pendingMilestoneRuns(this.profile).slice(0,MILESTONE_BATCH_SIZE)),
           ...(this.profile.bottles['lab-flask'] ? {flaskRecord: structuredClone(this.profile.flaskRecord)} : {})};
         const previous = this.summary;
         this.summary = await this.request('/api/achievements', snapshot);
+        // Only acknowledge counts the server has committed. A merge occurring
+        // during this request remains pending for the next upload.
+        if(Number.isSafeInteger(this.summary.totalMilestones))mergeMilestoneRuns(this.profile.milestoneSynced,snapshot.milestoneRuns);
         const recordsWon = newlyWonBottles(previous, this.summary, this.profile.recordCelebrations);
-        this.pending = snapshot.score !== this.profile.score || snapshot.highestTile !== this.profile.highestTile || snapshot.name !== this.profile.name || JSON.stringify(snapshot.bottles) !== JSON.stringify(this.profile.bottles) ||
+        this.pending = pendingMilestoneRuns(this.profile).length>0 || snapshot.score !== this.profile.score || snapshot.highestTile !== this.profile.highestTile || snapshot.name !== this.profile.name || JSON.stringify(snapshot.bottles) !== JSON.stringify(this.profile.bottles) ||
           (snapshot.flaskRecord!==undefined&&JSON.stringify(snapshot.flaskRecord)!==JSON.stringify(this.profile.flaskRecord));
         // Another tab may have submitted a newer record using this identity.
         if (this.summary.personal) {
@@ -171,7 +195,10 @@ export class Achievements {
       }
     })();
     this.saving = operation;
-    try { return await operation; } finally { this.saving = null; this.onSettled(); }
+    let result;
+    try { result=await operation; } finally { this.saving = null; this.onSettled(); }
+    if(force&&result&&Number.isSafeInteger(result.totalMilestones)&&pendingMilestoneRuns(this.profile).length)return this.sync(true);
+    return result;
   }
   async rename(name) {
     this.profile.name = name.trim() || 'A squishy friend'; this.pending = true;
@@ -373,6 +400,9 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     $('achievement-milestone').textContent = p.highestTile >= rule.milestone ? `${milestone} club · you made it!` : `Your next little milestone: ${milestone}`;
     $('achievement-count').textContent = s ? (s.reachedMilestone??s.reached2048).toLocaleString() : '—';
     $('achievement-count-label').textContent = `${(s?.reachedMilestone??s?.reached2048)===1?'player has':'players have'} reached ${milestone}`;
+    $('achievement-total').textContent = Number.isSafeInteger(s?.totalMilestones)?s.totalMilestones.toLocaleString():'—';
+    $('achievement-total-label').textContent = `total ${milestone} blobs made`;
+    $('achievement-total-note').textContent = s?.milestoneTrackingSince ? 'Every merge counts · tracking since '+new Date(s.milestoneTrackingSince).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : 'Every merge counts · tracking starts with this update';
     $('achievement-record').textContent = s?.record ? s.record.score.toLocaleString() : s ? 'Be the first' : '—';
     renderRoundStats();
     renderLeaders('all',s);

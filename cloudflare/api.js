@@ -1,6 +1,7 @@
 import {ruleFor,validValue} from '../browser/dist/merge-rules.js';
 import {roomsAPI} from './rooms-api.js';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH} from '../browser/dist/record-epoch.js';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor} from '../browser/dist/record-epoch.js';
+import {MILESTONE_BATCH_SIZE,validMilestoneRun,validMilestoneCount} from '../browser/dist/milestone-totals.js';
 const RECIPIENT = 'chem.xjtlu@gmail.com';
 const RECORD = 'SELECT players.* FROM players JOIN world_record ON world_record.player_id = players.id WHERE world_record.slot = 1';
 const BOTTLE_IDS = ['classic', 'lab-flask', 'classic-water', 'lab-flask-water', 'separating-funnel', 'conical-flask', 'separating-funnel-water', 'conical-flask-water'];
@@ -69,7 +70,10 @@ async function summary(env, playerId) {
     env.ACHIEVEMENTS.prepare(`SELECT p.id AS player_id,p.name,p.best_score AS score,p.highest_tile AS highestTile
       FROM players p LEFT JOIN world_record r ON r.slot=1 WHERE p.best_score>0
       ORDER BY p.best_score DESC,CASE WHEN r.player_id=p.id THEN 0 ELSE 1 END,p.best_at,p.id LIMIT 5`),
-    ...BOTTLE_IDS.map(id=>bottleLeaders(env.ACHIEVEMENTS,id))
+    ...BOTTLE_IDS.map(id=>bottleLeaders(env.ACHIEVEMENTS,id)),
+    env.ACHIEVEMENTS.prepare(`SELECT COALESCE(SUM(merge_count),0) AS total,
+      (SELECT started_at FROM milestone_tracking WHERE id=1) AS startedAt
+      FROM milestone_runs WHERE merge_mode=? AND achievement_epoch=?`).bind(rule.id,achievementEpochFor(rule.id))
   ]);
   const announcement=rule.id==='three'?await env.ACHIEVEMENTS.prepare('SELECT published_at AS publishedAt, expires_at AS expiresAt FROM three_v2_release_notice WHERE id=1').first():null;
   const winner = results[1].results[0];
@@ -87,6 +91,8 @@ async function summary(env, playerId) {
   return {
     bottles,mergeMode:rule.id,...(rule.id==='three'?{achievementEpoch:THREE_RECORD_EPOCH,announcement}:{}),milestone:rule.milestone,reachedMilestone:results[0].results[0].count,
     leaderboard:publicLeaders(results[9].results,playerId),
+    totalMilestones:results[10+BOTTLE_IDS.length].results[0].total,
+    milestoneTrackingSince:results[10+BOTTLE_IDS.length].results[0].startedAt,
     ...(rule.id==='two'?{reached2048:results[0].results[0].count}:{}),
     highestTile: results[2].results[0].tile ?? rule.start,
     record: winner ? {name: winner.name, score: winner.best_score, highestTile: winner.highest_tile} : null,
@@ -104,6 +110,10 @@ async function submit(request, env) {
   const name = typeof data.name === 'string' ? data.name.trim() : '';
   if (!name || name.length > 32 || /[\u0000-\u001f\u007f]/.test(name)) fail('Choose a name of 1–32 characters.', 400);
   if (!validScore(score) || !validTile(highestTile)) fail('Invalid achievement.', 400);
+  const milestoneRuns=data.milestoneRuns===undefined?{}:data.milestoneRuns;
+  if(!milestoneRuns||typeof milestoneRuns!=='object'||Array.isArray(milestoneRuns)||Object.keys(milestoneRuns).length>MILESTONE_BATCH_SIZE||
+      Object.entries(milestoneRuns).some(([run,count])=>!validMilestoneRun(run)||!validMilestoneCount(count))||
+      (Object.keys(milestoneRuns).length>0&&highestTile<rule.milestone))fail('Invalid milestone total.',400);
   // Accept attributed submissions from an earlier already-open game page too.
   if (data.bottle !== undefined && !BOTTLE_IDS.includes(data.bottle)) fail('Invalid bottle achievement.', 400);
   if (data.bottles === undefined && data.bottle !== undefined) data.bottles = {[data.bottle]: {score, highestTile}};
@@ -130,6 +140,10 @@ async function submit(request, env) {
       highest_tile = MAX(players.highest_tile, excluded.highest_tile)
     WHERE players.token_hash = excluded.token_hash`).bind(id, hash, name, score, highestTile, now, now).run();
   if (!result.meta.changes) fail('This player identity could not be verified.', 403);
+  if(Object.keys(milestoneRuns).length)await env.ACHIEVEMENTS.batch(Object.entries(milestoneRuns).map(([run,count])=>env.ACHIEVEMENTS.prepare(`
+    INSERT INTO milestone_runs (merge_mode,achievement_epoch,player_id,run_id,merge_count) VALUES (?,?,?,?,?)
+    ON CONFLICT(merge_mode,achievement_epoch,player_id,run_id) DO UPDATE SET merge_count=MAX(milestone_runs.merge_count,excluded.merge_count)`)
+    .bind(rule.id,achievementEpochFor(rule.id),id,run,count)));
   const bottleStatements = Object.entries(data.bottles ?? {}).map(([bottleId, record]) => env.ACHIEVEMENTS.prepare(`
     INSERT INTO bottle_scores (player_id, bottle_id, best_score, highest_tile, best_at) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(player_id, bottle_id) DO UPDATE SET

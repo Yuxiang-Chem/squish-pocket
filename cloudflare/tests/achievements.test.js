@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import worker from '../api.js';
 
 // Execute the actual parameterized statements against SQLite, D1's SQL engine.
-function setup({beforeReset=false,beforeThree=false,beforeFresh=false} = {}) {
+function setup({beforeReset=false,beforeThree=false,beforeFresh=false,beforeTotals=false} = {}) {
   const sql = new DatabaseSync(':memory:');
   sql.exec(readFileSync(new URL('../migrations/0001_achievements.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0002_bottle_records.sql', import.meta.url), 'utf8'));
@@ -18,6 +18,7 @@ function setup({beforeReset=false,beforeThree=false,beforeFresh=false} = {}) {
   if(!beforeReset)sql.exec(readFileSync(new URL('../migrations/0009_laboratory_water_vessels.sql', import.meta.url), 'utf8'));
   if(!beforeThree)sql.exec(readFileSync(new URL('../migrations/0010_three_combine.sql', import.meta.url), 'utf8'));
   if(!beforeThree&&!beforeFresh)sql.exec(readFileSync(new URL('../migrations/0011_three_combine_fresh_achievements.sql',import.meta.url),'utf8'));
+  if(!beforeTotals)sql.exec(readFileSync(new URL('../migrations/0012_milestone_totals.sql',import.meta.url),'utf8'));
   const db = {prepare(query) {
     return {values: [], bind(...values) { this.values = values; return this; },
       async run() { const result = sql.prepare(query).run(...this.values); return {meta: {changes: result.changes}}; },
@@ -413,4 +414,48 @@ test('Three Combine fresh boards preserve Two records and archived zzz records w
  result=await t.request('/api/achievements?merge=three',{name:'zzz',score:9,highestTile:9,bottles:{classic:{score:9,highestTile:9}}},a);assert.equal(result.status,200);assert.equal(result.data.record.score,9);
  assert.equal((await t.request('/api/achievements?merge=three',{name:'Hijack',score:27,highestTile:27},{id:a.id,token:crypto.randomUUID()})).status,403);
  assert.deepEqual(rows(),before);assert.deepEqual(t.sql.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+
+test('milestone totals count repeated creations independently of unique players and survive retries, restarts and tab races',async()=>{
+ const t=setup(),a=t.player(),b=t.player(),run=crypto.randomUUID(),next=crypto.randomUUID();
+ const payload=(runs)=>({name:'Friend',score:4096,highestTile:2048,milestoneRuns:runs});
+ let r=await t.request('/api/achievements',payload({[run]:1}),a);
+ assert.equal(r.status,200);assert.equal(r.data.totalMilestones,1);assert.equal(r.data.reached2048,1);
+ assert.ok(r.data.milestoneTrackingSince>0);
+ r=await t.request('/api/achievements',payload({[run]:2}),a);
+ assert.equal(r.data.totalMilestones,2);assert.equal(r.data.reached2048,1);
+ await Promise.all([t.request('/api/achievements',payload({[run]:2}),a),t.request('/api/achievements',payload({[run]:1}),a)]);
+ r=await t.request('/api/achievements',payload({[next]:3}),a);assert.equal(r.data.totalMilestones,5);assert.equal(r.data.reached2048,1);
+ r=await t.submit(a,0,2);assert.equal(r.data.totalMilestones,5,'old clients and a fresh round cannot reduce totals');
+ r=await t.request('/api/achievements',payload({[run]:2}),b);assert.equal(r.data.totalMilestones,7);assert.equal(r.data.reached2048,2);
+ const forged=await t.request('/api/achievements',payload({[next]:99}),{...a,token:crypto.randomUUID()});assert.equal(forged.status,403);
+ const publicSummary=(await t.request('/api/achievements')).data;
+ assert.equal(publicSummary.totalMilestones,7);assert.equal(JSON.stringify(publicSummary).includes(run),false);assert.equal(JSON.stringify(publicSummary).includes(a.id),false);
+ assert.equal((await t.request('/api/achievements?merge=three')).data.totalMilestones,0);
+ r=await t.request('/api/achievements?merge=three',{name:'Triple',score:2187,highestTile:2187,milestoneRuns:{[run]:2}},a);
+ assert.equal(r.status,200);assert.equal(r.data.totalMilestones,2);assert.equal(r.data.reachedMilestone,1);
+ assert.equal((await t.request('/api/achievements')).data.totalMilestones,7);
+ assert.equal((await t.request('/api/achievements?merge=three',{name:'Old',score:2187,highestTile:2187,achievementEpoch:1,milestoneRuns:{[run]:50}},a)).status,409);
+ assert.equal((await t.request('/api/achievements?merge=three')).data.totalMilestones,2);
+});
+
+test('invalid milestone batches make no player or total changes',async()=>{
+ const t=setup(),a=t.player(),run=crypto.randomUUID(),payload={name:'Valid',score:2048,highestTile:2048};
+ for(const milestoneRuns of [null,[],3,'bad',{bad:1},{[run]:0},{[run]:-1},{[run]:1.5},{[run]:1000001},Object.fromEntries(Array.from({length:51},()=>[crypto.randomUUID(),1]))]){
+  assert.equal((await t.request('/api/achievements',{...payload,milestoneRuns},a)).status,400);
+ }
+ assert.equal((await t.request('/api/achievements',{...payload,highestTile:1024,milestoneRuns:{[run]:1}},a)).status,400);
+ assert.equal(t.sql.prepare('SELECT COUNT(*) AS n FROM players').get().n,0);
+ assert.equal(t.sql.prepare('SELECT COUNT(*) AS n FROM milestone_runs').get().n,0);
+});
+
+test('adding totals preserves every existing board and starts with no invented historical merges',async()=>{
+ const t=setup({beforeTotals:true}),a=t.player();
+ for(const prefix of ['', 'three_v2_'])t.sql.prepare(`INSERT INTO ${prefix}players (id,token_hash,name,best_score,highest_tile,best_at,created_at) VALUES (?,?,?,?,?,?,?)`).run(a.id,'hash','Keep me',prefix?2187:4096,prefix?2187:2048,1,1);
+ const tables=['players','world_record','bottle_scores','bottle_records','flask_current_scores','three_v2_players','three_v2_world_record','three_v2_bottle_scores','three_v2_bottle_records'];
+ const snapshot=()=>Object.fromEntries(tables.map(name=>[name,t.sql.prepare('SELECT * FROM '+name+' ORDER BY 1').all()])),before=snapshot();
+ t.sql.exec(readFileSync(new URL('../migrations/0012_milestone_totals.sql',import.meta.url),'utf8'));
+ assert.deepEqual(snapshot(),before);
+ for(const mode of ['two','three']){const r=await t.request('/api/achievements?merge='+mode);assert.equal(r.status,200);assert.equal(r.data.totalMilestones,0);assert.equal(r.data.reachedMilestone,1);assert.equal(r.data.record.name,'Keep me');}
+ assert.deepEqual(t.sql.prepare('PRAGMA foreign_key_check').all(),[]);
 });

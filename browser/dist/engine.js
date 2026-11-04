@@ -1,14 +1,15 @@
 import {outlinesTouch} from './preparation-contact.js?v=29';
-import {ruleFor,valueFor,connectedTriples} from './merge-rules.js?v=61';
-import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=61';
+import {validMilestoneRun} from './milestone-totals.js?v=62';
+import {ruleFor,valueFor,connectedTriples} from './merge-rules.js?v=62';
+import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=62';
 import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
-import {refillRack,hasMatchingNeighbors} from './rack.js?v=61';
-import {bottleFor,isBottleId} from './bottles.js?v=61';
+import {refillRack,hasMatchingNeighbors} from './rack.js?v=62';
+import {bottleFor,isBottleId} from './bottles.js?v=62';
 import {eject} from './ejection.js?v=29';
 import {insertedOrder} from './preparation-gesture.js?v=29';
-import {createWaterState,advanceWater,waterContact} from './water.js?v=61';
-import {FLASK_RECORD_EPOCH,achievementEpochFor} from './record-epoch.js?v=61';
+import {createWaterState,advanceWater,waterContact} from './water.js?v=62';
+import {FLASK_RECORD_EPOCH,achievementEpochFor} from './record-epoch.js?v=62';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;
 export const radiusFor=(level,blobSize=150,mergeMode='two')=>13*1.2**level*blobSize/100*ruleFor(mergeMode).blobScale;
 // Matching blobs fuse for MERGE_DELAY seconds before combining; the result then
@@ -22,6 +23,7 @@ export function blob(level,x,y,vx=0,vy=0){
 }
 export class Engine {
   constructor(seed=Date.now(),bottleId='classic',mergeMode='two'){
+    this.milestoneRun=crypto.randomUUID();this.milestoneCount=0;
     this.mergeMode=ruleFor(mergeMode).id;this.achievementEpoch=achievementEpochFor(this.mergeMode);this.blobScale=this.rules.blobScale;
     this.bottleId=isBottleId(bottleId)?bottleId:'classic';
     this.bottleVersion=this.vessel.BOTTLE_VERSION;this.recordEpoch=FLASK_RECORD_EPOCH;this.blobs=[];this.score=0;this.shots=0;this.current=0;this.next=1;this.highestLevel=0;
@@ -33,6 +35,7 @@ export class Engine {
   }
   get rules(){return ruleFor(this.mergeMode);}
   value(level){return valueFor(level,this.mergeMode);}
+  countMilestone(level){if(this.value(level)===this.rules.milestone)this.milestoneCount++;}
   get vessel(){return bottleFor(this.bottleId);}
   randomUint(){this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed;}
   setPhysics(settings){
@@ -81,6 +84,7 @@ export class Engine {
     const source=this.rack[i],target=this.rack[j],before=this.rack.map(b=>({...b}));
     if(this.rules.count===2&&source.level===target.level&&source.level<MAX_LEVEL){
       const result={id:++this.rackSerial,level:source.level+1};
+      this.countMilestone(result.level);
       this.rack=this.rack.filter(b=>b.id!==sourceId);
       this.rack[this.rack.findIndex(b=>b.id===targetId)]=result;this.selectedId=result.id;
       this.rackEvents=[{kind:'merge',id:result.id,level:result.level,from:[sourceId,targetId],before,after:this.rack.map(b=>({...b}))},...refillRack(this,()=>this.newIncoming(),MAX_LEVEL)];
@@ -191,7 +195,7 @@ export class Engine {
       for(const p of n.nodes)p.bottleSide=p.y>=BOTTLE_MOUTH&&(interior||insideBottle(p.x,p.y));
       bottleWalls(n);measure(n,dt);
       this.highestLevel=Math.max(this.highestLevel,level);
-      this.score+=this.value(level);return {blob:n,value:this.value(level)};
+      this.countMilestone(level);this.score+=this.value(level);return {blob:n,value:this.value(level)};
     });
     if(merged.size)this.blobs=bs.filter(b=>!merged.has(b)).concat(events.map(e=>e.blob));
     separateBodies(this.blobs,b=>this.bodyRadius(b),bottleWalls,6,fused);
@@ -209,6 +213,8 @@ export class Engine {
     }
   }
   static restore(data){
+    if(data?.milestoneRun!==undefined&&!validMilestoneRun(data.milestoneRun))return null;
+    if(data?.milestoneCount!==undefined&&(!Number.isSafeInteger(data.milestoneCount)||data.milestoneCount<0||data.milestoneCount>1000000||!validMilestoneRun(data.milestoneRun)))return null;
     if(data?.achievementEpoch!==undefined&&(!Number.isSafeInteger(data.achievementEpoch)||data.achievementEpoch<1))return null;
     if(data?.blobScale!==undefined&&(!Number.isFinite(data.blobScale)||data.blobScale<=0||data.blobScale>2))return null;
     if(data?.mergeMode!==undefined&&!['two','three'].includes(data.mergeMode))return null;
