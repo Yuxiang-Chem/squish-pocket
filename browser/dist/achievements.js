@@ -1,8 +1,8 @@
-import {renderThreeAnnouncement} from './announcement.js?v=68';
-import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=68';
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=68';
-import {BOTTLES} from './bottles.js?v=68';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=68';
+import {renderThreeAnnouncement} from './announcement.js?v=72';
+import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=72';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=72';
+import {BOTTLES} from './bottles.js?v=72';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=72';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
@@ -214,7 +214,7 @@ export class Achievements {
 
 export function connectAchievements({getEngine, getBest, canCelebrate = () => true, cancelAim, toast}) {
   const $ = id => document.getElementById(id), dialog = $('achievements-dialog');
-  const pageIds = ['all', ...Object.keys(BOTTLES)], pages = $('achievement-pages');
+  const pageIds = Object.keys(BOTTLES), pages = $('achievement-pages');
   const celebration = $('champion-page'), recordQueue = [];
   let celebrating = null;
   let selectedPage = 0;
@@ -395,19 +395,12 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     dialog.querySelector('.achievement-badge').textContent=String(rule.milestone);
     dialog.querySelector('.achievement-intro').textContent=rule.name+' · Every '+milestone+' starts with a tiny '+(rule.id==='three'?'one.':'two.');
     dialog.querySelector('.achievement-footnote').textContent=rule.name+' keeps its own name, best scores and saved rounds in this browser. The player counter counts each player once. The blob total counts every new '+milestone+' merge in the bottle or ready row from the tracking date. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.'+(rule.id==='three'?' Only fresh rounds started after the restart count toward these achievements.':'');
-    $('achievement-personal-tile').textContent = p.highestTile.toLocaleString();
-    $('achievement-personal-score').textContent = p.score.toLocaleString();
-    $('achievement-milestone').textContent = p.highestTile >= rule.milestone ? `${milestone} club · you made it!` : `Your next little milestone: ${milestone}`;
     $('achievement-count').textContent = s ? (s.reachedMilestone??s.reached2048).toLocaleString() : '—';
     $('achievement-count-label').textContent = `${(s?.reachedMilestone??s?.reached2048)===1?'player has':'players have'} reached ${milestone}`;
     $('achievement-total').textContent = Number.isSafeInteger(s?.totalMilestones)?s.totalMilestones.toLocaleString():'—';
     $('achievement-total-label').textContent = `total ${milestone} blobs made`;
     $('achievement-total-note').textContent = s?.milestoneTrackingSince ? 'Every merge counts · tracking since '+new Date(s.milestoneTrackingSince).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : 'Every merge counts · tracking starts with this update';
-    $('achievement-record').textContent = s?.record ? s.record.score.toLocaleString() : s ? 'Be the first' : '—';
     renderRoundStats();
-    renderLeaders('all',s);
-    $('achievement-holder').textContent = s?.record ? `${s.record.name} · highest score` : 'A little room for a new record';
-    $('achievement-global-tile').textContent = s ? s.highestTile.toLocaleString() : '—';
     for (const id of Object.keys(BOTTLES)) {
       const panel = $(`achievement-page-${id}`), shared = s?.bottles?.[id], personal = p.bottles[id] ?? {score: 0, highestTile:rule.start};
       renderLeaders(id,shared);

@@ -1,3 +1,4 @@
+// Historical crowded-pile regressions deliberately retain their original 150% size.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Engine,blob} from '../dist/engine.js';
@@ -19,13 +20,13 @@ function checkGlass(e){
   }
 }
 function crowded(){
-  const e=new Engine(42,'lab-flask');
+  const e=new Engine(42,'lab-flask');e.setPhysics({blobSize:150});
   e.blobs=[blob(7,125,250),blob(2,180,190),blob(5,254,202),blob(4,255,292),blob(6,180,345),blob(3,110,350),blob(1,275,360)];
   for(const b of e.blobs){prepare(b,e.radius(b.level),dt);measure(b,dt);b.inBottle=true;b.hasEntered=true;for(const p of b.nodes)p.bottleSide=true;}
   return e;
 }
 function screenshotPile(){
-  const e=new Engine(42,'lab-flask');
+  const e=new Engine(42,'lab-flask');e.setPhysics({blobSize:150});
   e.blobs=[blob(8,125,325),blob(6,82,215),blob(5,184,198),blob(6,290,282),blob(3,225,285),blob(4,246,377),blob(1,223,340),blob(2,236,218),blob(1,155,160),blob(0,280,193),blob(4,275,153)];
   for(const b of e.blobs){prepare(b,e.radius(b.level),dt);measure(b,dt);b.inBottle=true;b.hasEntered=true;for(const p of b.nodes)p.bottleSide=e.vessel.contains(p.x,p.y);}
   return e;
@@ -83,16 +84,16 @@ test('Older crowded flask saves repair neck penetration while retaining progress
 });
 test('Oversized shots and merges retain whole-membrane glass containment',()=>{
   for(const level of [5,7,9])for(const x of [94,180,266]){
-    const e=new Engine(42,'lab-flask');e.rack=[{id:1,level},{id:2,level:0},{id:3,level:1}];e.rackSerial=3;e.selectedId=1;e.syncRack();
+    const e=new Engine(42,'lab-flask');e.setPhysics({blobSize:150});e.rack=[{id:1,level},{id:2,level:0},{id:3,level:1}];e.rackSerial=3;e.selectedId=1;e.syncRack();
     e.shoot(0,1,true,{x,y:58});
     for(let i=0;i<180&&!e.over;i++){e.step(dt);checkGlass(e);}
   }
-  const e=new Engine(7,'lab-flask');e.blobs=[blob(5,150,218),blob(5,200,218)];
+  const e=new Engine(7,'lab-flask');e.setPhysics({blobSize:150});e.blobs=[blob(5,150,218),blob(5,200,218)];
   for(let i=0;i<180&&!e.over;i++){e.step(dt);checkGlass(e);}
   assert.ok(e.score>0,'A merge near the necks completes normally');
 });
 test('Blobs filling the three-neck flask above the red line settle without spontaneous jumping',()=>{
-  const e=new Engine(42,'lab-flask');
+  const e=new Engine(42,'lab-flask');e.setPhysics({blobSize:150});
   e.blobs=[
     blob(7,120,340),blob(6,235,345),blob(4,55,290),blob(3,300,300),
     blob(5,180,260),blob(2,100,235),blob(1,255,240),blob(4,150,195),

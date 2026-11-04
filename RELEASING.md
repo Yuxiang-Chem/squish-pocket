@@ -352,3 +352,20 @@ Restored the test Worker to its preserved Lab version
 `ae049779-8b05-47f0-ad5d-26fa8f44202d`; all 34 test assets match their saved
 pre-promotion hashes. This restoration changes no database data. Lab remains
 exclusive to the test site and its development branch.
+
+## Vessel defaults and individual achievement boards — 2026-11-05
+
+Assets v72 set Three-neck base blob size to 120%, conical and separating-funnel
+sizes to 100%, including water variants. Original bottles remain at 150%.
+Stiffness remains 10%, viscosity 0%, and Three Combine retains its 30% multiplier.
+New rounds and restored official rounds use these per-vessel defaults. Opponent
+previews use the same vessel sizes. The “All bottles” achievement tab/page is
+removed; eight vessel Top 5 boards, milestone counters and all stored history
+remain. No schema change or achievement reset is required.
+
+Verified test `a5edc969-e280-427e-974a-3d2a96e1d48f` passed 234 automated checks
+and Chrome/WebKit checks across all sixteen vessel/rule combinations. A parallel
+Lab test release caused the first promotion guard to reject mismatched assets.
+The exact verified candidate was reinstated on test, then promoted through the
+guard to official `201ffe69-82ef-41f3-9dd0-f500671fbc85`. All 32 official assets
+and both mode APIs matched source. Lab is excluded from this official release.

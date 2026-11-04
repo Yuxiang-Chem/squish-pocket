@@ -6,7 +6,7 @@
   <meta name="description" content="A pocketful of possibility. Aim, drop, and merge squishy little blobs in a relaxing physics game, made for your phone.">
   <title>Squish Pocket — a little room to play</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=68"><script type="module" src="app.js?v=68"></script>
+  <link rel="stylesheet" href="style.css?v=72"><script type="module" src="app.js?v=72"></script>
 </head>
 <body>
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -134,7 +134,6 @@
  <div class="achievement-card achievement-club"><span class="achievement-badge" aria-hidden="true">2048</span><div><strong id="achievement-count">—</strong><span id="achievement-count-label">players have reached 2048</span></div></div>
  <div class="achievement-card achievement-total"><strong id="achievement-total">—</strong><span id="achievement-total-label">total 2048 blobs made</span><small id="achievement-total-note">Every merge counts · tracking starts with this update</small></div>
  <div class="achievement-bottle-tabs" role="tablist" aria-label="Bottle records">
-  <button type="button" id="achievement-tab-all" role="tab" aria-controls="achievement-page-all" aria-selected="true">All bottles</button>
   <button type="button" id="achievement-tab-classic" role="tab" aria-controls="achievement-page-classic" aria-selected="false" tabindex="-1">Original</button>
   <button type="button" id="achievement-tab-lab-flask" role="tab" aria-controls="achievement-page-lab-flask" aria-selected="false" tabindex="-1">Three-neck</button>
   <button type="button" id="achievement-tab-classic-water" role="tab" aria-controls="achievement-page-classic-water" aria-selected="false" tabindex="-1">Original water</button>
@@ -145,13 +144,8 @@
   <button type="button" id="achievement-tab-conical-flask-water" role="tab" aria-controls="achievement-page-conical-flask-water" aria-selected="false" tabindex="-1">Conical water</button>
  </div>
  <div id="achievement-pages" class="achievement-pages" role="region" aria-label="Swipe to browse bottle records" tabindex="0">
-  <section id="achievement-page-all" class="achievement-page" role="tabpanel" aria-labelledby="achievement-tab-all">
-   <h3 class="achievement-bottle-title">All bottles <span>Every little achievement</span></h3>
-   <div class="achievement-card achievement-world"><span class="label">WORLD HIGH SCORE</span><strong id="achievement-record">—</strong><span id="achievement-holder">A little room for a new record</span><span>Biggest merge anywhere: <b id="achievement-global-tile">—</b></span></div>
-   <div class="achievement-personal"><span id="achievement-milestone">Your next little milestone: 2048</span><div><span>YOUR BIGGEST MERGE <b id="achievement-personal-tile">2</b></span><span>YOUR BEST SCORE <b id="achievement-personal-score">0</b></span></div></div>
-  </section>
  </div>
- <div class="achievement-page-controls"><button type="button" id="achievement-previous" aria-label="Previous bottle records">‹</button><p>Swipe to compare bottles <span id="achievement-page-number" aria-live="polite">1 / 9</span></p><button type="button" id="achievement-next" aria-label="Next bottle records">›</button></div>
+ <div class="achievement-page-controls"><button type="button" id="achievement-previous" aria-label="Previous bottle records">‹</button><p>Swipe to compare bottles <span id="achievement-page-number" aria-live="polite">1 / 8</span></p><button type="button" id="achievement-next" aria-label="Next bottle records">›</button></div>
  <form id="achievement-name-form"><label for="achievement-name">Your name on the board (optional)</label><div class="achievement-name-row"><input id="achievement-name" maxlength="32" autocomplete="nickname" placeholder="Your name (optional)"><button class="small-button" type="submit">Save name</button></div></form>
  <div class="achievement-sync"><p id="achievement-status" role="status" aria-live="polite">Connecting to shared records…</p><button class="text-button" id="achievement-refresh" type="button">Refresh</button></div>
  <div class="record-message-section"><h3>A note from the top.</h3><p id="record-message-locked">Hold the world high score in any bottle to unlock a message to the creator. Equal scores keep the first record holder.</p>
@@ -163,7 +157,7 @@
   <p id="record-email-note"></p><button id="record-send" class="primary" type="submit">Send to the creator <svg><use href="#i-arrow"/></svg></button>
   <p id="record-message-status" role="status" aria-live="polite"></p>
  </form></div>
- <p class="achievement-footnote">One player per browser. Reaching 2048 in the bottle or the ready row counts once, even across rounds. Older scores without a bottle label remain under All bottles. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.</p>
+ <p class="achievement-footnote">One player per browser. Reaching 2048 in the bottle or the ready row counts once, even across rounds. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.</p>
 </dialog>
 <dialog id="champion-page" class="champion-page" aria-labelledby="champion-title" aria-describedby="champion-description">
  <button class="icon-button close-dialog" data-close aria-label="Close congratulations"><svg><use href="#i-close"/></svg></button>

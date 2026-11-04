@@ -1,4 +1,8 @@
 export const DEFAULT_PHYSICS=Object.freeze({stiffness:10,viscosity:0,blobSize:150});
+export function defaultPhysicsFor(bottleId='classic'){
+  const bottle=typeof bottleId==='string'?bottleId.replace(/-water$/,''):'';
+  return {...DEFAULT_PHYSICS,blobSize:bottle==='lab-flask'?120:['conical-flask','separating-funnel'].includes(bottle)?100:150};
+}
 export function normalizePhysics(settings){
   const result={};
   for(const key of ['stiffness','viscosity','blobSize']){

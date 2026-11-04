@@ -88,3 +88,11 @@ and repeated submissions from inflating the total. Offline progress is saved
 locally and uploaded in batches of at most 50 rounds. Three Combine totals use
 the current achievement epoch, so archived rounds cannot refill a fresh season.
 Migration `0012_milestone_totals.sql` only adds tables; it resets no records.
+
+### Vessel blob defaults
+
+The Three-neck flask uses 120% base blob size. Conical flasks and separating
+funnels use 100%; the Original bottle stays at 150%. Each default also applies
+to the water variant. Three Combine retains its additional 30% scale.
+Achievements shows the eight individual bottle Top 5 boards; the combined
+“All bottles” tab is removed. Existing shared records are preserved.

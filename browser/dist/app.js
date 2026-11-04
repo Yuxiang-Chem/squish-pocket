@@ -1,17 +1,17 @@
-import {recordEligible,recordScore} from './record-epoch.js?v=68';
-import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=68';
-import {createStartPage} from './start-page.js?v=68';
-import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=68';
+import {recordEligible,recordScore} from './record-epoch.js?v=72';
+import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=72';
+import {createStartPage} from './start-page.js?v=72';
+import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=72';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
-import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
-import {RackMotion} from './rack-motion.js?v=68';
-import {isBottleId} from './bottles.js?v=68';
+import {PHYSICS_DEFAULTS_VERSION,playerPhysics,defaultPhysicsFor} from './physics-settings.js?v=72';
+import {RackMotion} from './rack-motion.js?v=72';
+import {isBottleId} from './bottles.js?v=72';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=68';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=72';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
-import {connectAchievements} from './achievements.js?v=68';
+import {connectAchievements} from './achievements.js?v=72';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
@@ -42,7 +42,7 @@ function restoreBottle(id,restoreSound=false){
     const data=JSON.parse(localStorage.getItem(saveKey(id)));
     if(data?.version===1){
       const restored=Engine.restore(data.engine);
-      if(restored?.bottleId===id&&restored.mergeMode===activeRule.id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
+      if(restored?.bottleId===id&&restored.mergeMode===activeRule.id){engine=restored;engine.setPhysics(defaultPhysicsFor(id));started=data.started===true;paused=started;}
       if(recordEligible(engine)&&Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
       if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
     }
@@ -109,7 +109,7 @@ function showOverlay({kicker,title,description,button,action,secondary,secondary
 function newGame(){
   if(gameMode!=='classic')return;
   achievements.observe(engine,best);
-  const physics=engine.physics;
+  const physics=defaultPhysicsFor(engine.bottleId);
   engine=new Engine(undefined,engine.bottleId,activeRule.id);engine.setPhysics(physics);started=true;paused=false;endedShown=false;spillReveal=0;highestSeen=0;
   particles=[];rackRings=[];rackSparks=[];aimAngle=0;cancelAim();accumulator=0;
   rackMotion.reset([]);rackMotion.play(engine.rackEvents,engine.rackOrder());
@@ -602,11 +602,11 @@ function enterMatch(room,connected){
   const key=`${room.code}:${room.round}`;
   if(currentMatchKey!==key||gameMode!=='multiplayer'){
     cancelAim();if(gameMode==='classic')save();gameMode='multiplayer';activeRoom=room;currentMatchKey=key;shownResult='';
-    engine=new Engine(room.seed,room.bottleId,room.mergeMode??'two');engine.setPhysics(playerPhysics());
+    engine=new Engine(room.seed,room.bottleId,room.mergeMode??'two');engine.setPhysics(defaultPhysicsFor(engine.bottleId));
     let restoredSave=false;
     try{
       const data=JSON.parse(localStorage.getItem(`squish-pocket-match:${key}`));
-      if(data?.round===room.round&&data.seed===room.seed){const restored=Engine.restore(data.engine);if(restored?.bottleId===room.bottleId&&restored.mergeMode===(room.mergeMode??'two')){engine=restored;engine.setPhysics(playerPhysics());restoredSave=true;}}
+      if(data?.round===room.round&&data.seed===room.seed){const restored=Engine.restore(data.engine);if(restored?.bottleId===room.bottleId&&restored.mergeMode===(room.mergeMode??'two')){engine=restored;engine.setPhysics(defaultPhysicsFor(engine.bottleId));restoredSave=true;}}
     }catch{}
     started=true;resetVisuals();
     if(!restoredSave){rackMotion.reset([]);rackMotion.play(engine.rackEvents,engine.rackOrder());}

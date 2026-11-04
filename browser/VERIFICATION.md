@@ -326,3 +326,17 @@ Published on 2026-11-04 as Worker version `14512392-e5ea-4a57-ab1f-1c79202f6f7b`
   including ordinary live score improvements, and database integrity checks pass.
 - The test site was restored to its preserved Lab version; all 34 asset hashes
   match the pre-promotion snapshot. Official serves only the 32 non-Lab assets.
+
+### Per-vessel defaults and eight achievement boards — 2026-11-05
+
+- Test `a5edc969-e280-427e-974a-3d2a96e1d48f` and official
+  `201ffe69-82ef-41f3-9dd0-f500671fbc85` use v72: Three-neck 120%, conical and
+  separating funnel 100%, including water; Original stays 150%. Both merge rules
+  retain their scale. The aggregate tab/page is removed, with all eight vessel
+  Top 5 boards, mode switching, swipe/keyboard navigation and counters retained.
+- All 234 automated checks passed (192 browser Node, 37 backend/release, five
+  runtime). Historical crowded-flask fixtures explicitly retain their original
+  150% size to preserve the reported above-line stress case; it still passes.
+- Local and live-test Chrome/WebKit checked all sixteen vessel/rule defaults,
+  water variants, eight Top 5 boards, Home/End navigation and phone layouts with
+  shared writes mocked. Official serves only 32 assets and has no Lab code.

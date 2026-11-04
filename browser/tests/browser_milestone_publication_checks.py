@@ -19,6 +19,10 @@ with sync_playwright() as p:
   page.route('**/api/**',lambda r:r.abort());page.route('**/api/achievements*',records)
   page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort())
   page.goto(base,wait_until='domcontentloaded');assert page.locator('#mode-lab').count()==0
+  assert page.locator('#achievement-tab-all').count()==0
+  assert page.locator('.achievement-bottle-tabs [role=tab]').count()==8
+  defaults=page.evaluate("async()=>{const {Engine}=await import('./engine.js?v=72');return ['two','three'].flatMap(mode=>['lab-flask','lab-flask-water','conical-flask','conical-flask-water','separating-funnel','separating-funnel-water'].map(id=>({id,mode,size:new Engine(7,id,mode).physics.blobSize})));}")
+  assert all(row['size']==(120 if row['id'].startswith('lab-flask') else 100) for row in defaults)
   page.locator('#menu-achievements').click()
   for mode,label in [('two','total 2048 blobs made'),('three','total 2,187 blobs made')]:
    page.locator('[data-achievement-mode='+mode+']').click()
