@@ -25,3 +25,6 @@ playwright-report/
 
 # Deployment snapshots
 *.tar.gz
+.releases/
+/archive/*
+!/archive/README.md

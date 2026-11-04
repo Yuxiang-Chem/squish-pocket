@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {Engine} from '../dist/engine.js';
 import {RoomClient} from '../dist/room-client.js';
 
-test('same multiplayer room seed produces identical starting racks and incoming sequences on both bottles', () => {
-  for (const bottleId of ['classic', 'lab-flask']) {
+test('same multiplayer room seed produces identical starting racks and incoming sequences on all four bottles', () => {
+  for (const bottleId of ['classic', 'lab-flask', 'classic-water', 'lab-flask-water']) {
     const a = new Engine(987654321, bottleId);
     const b = new Engine(987654321, bottleId);
     assert.deepEqual(a.rackOrder(), b.rackOrder());

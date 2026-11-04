@@ -1,0 +1,12 @@
+---
+description: Release Squish Pocket to test before any official promotion
+alwaysApply: true
+---
+
+- Follow the project-wide `AGENTS.md` and `RELEASING.md`.
+- Work in the single GitHub checkout; the old SquishPocket path is an alias.
+- Routine fixes and new features go to `squish-test.chemisgreat.online` first.
+- `npm run deploy` and `npm run deploy:test` target test only.
+- Promote the official game only when the user explicitly requests it, using
+  `npm run deploy:production -- --tested-version ID` for the verified candidate.
+- Preserve separate test/official databases, rooms, and browser saves.

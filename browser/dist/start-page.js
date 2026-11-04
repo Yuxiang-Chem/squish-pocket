@@ -1,5 +1,5 @@
-import {BOTTLES} from './bottles.js?v=33';
-import {radiusFor} from './engine.js?v=33';
+import {BOTTLES} from './bottles.js?v=52';
+import {radiusFor} from './engine.js?v=52';
 import {RoomClient} from './room-client.js?v=34';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
@@ -40,7 +40,7 @@ export function createStartPage(hooks){
     }
     const saved=hooks.classicStatus(bottleId);
     setPrimaryLabel('classic-play',saved?'Continue Classic':'Play Classic');
-    $('classic-save-note').textContent=saved?'Your saved pile is ready. The other bottle’s round stays saved too.':'Each bottle keeps its own saved round.';
+    $('classic-save-note').textContent=saved?'Your saved pile is ready. Your other bottles’ rounds stay saved too.':'Each bottle keeps its own saved round.';
   }
   function showSetup(selected){
     mode=selected;$('menu-status').textContent='';
@@ -126,9 +126,10 @@ export function createStartPage(hooks){
   $('room-leave').onclick=()=>{void leave();};
   $('match-finish').onclick=()=>hooks.finishRound();
   $('match-opponent-view').onclick=()=>{hooks.cancelAim();drawOpponent();$('opponent-dialog').showModal();};
+  $('room-name').addEventListener('focus',()=>$('room-name').select());
   $('room-name').value=hooks.profile.name==='A squishy friend'?'':hooks.profile.name.slice(0,24);
   try{const code=localStorage.getItem('squish-pocket-last-room');if(code){$('room-rejoin').classList.remove('hidden');$('room-rejoin').textContent=`Rejoin room ${code}`;$('room-rejoin').onclick=()=>run(()=>client.open(code));}}catch{}
-  for(const [id,key] of [['menu-bottle-classic','classic'],['menu-bottle-flask','lab-flask']]){const ctx=$(id).getContext('2d');ctx.scale(.5,.5);BOTTLES[key].drawBottleBack(ctx);BOTTLES[key].drawBottleFront(ctx);}
+  for(const button of document.querySelectorAll('[data-bottle]')){const ctx=button.querySelector('canvas').getContext('2d');ctx.scale(.5,.5);BOTTLES[button.dataset.bottle].drawBottleBack(ctx);BOTTLES[button.dataset.bottle].drawBottleFront(ctx);}
   if(new URL(location.href).searchParams.has('teststate')){setPage('game');hooks.showSavedState?.();}
   else setPage('home');
   return {client,showRoom:()=>showSetup('multiplayer'),publish:()=>client.publish(),resultTitle};

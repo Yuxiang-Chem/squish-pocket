@@ -1,0 +1,12 @@
+{
+  "name": "squish-pocket-project",
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix browser test && npm --prefix cloudflare test",
+    "deploy": "npm --prefix cloudflare run deploy:test",
+    "deploy:test": "npm --prefix cloudflare run deploy:test",
+    "deploy:production": "npm --prefix cloudflare run deploy:production --",
+    "check:release": "npm --prefix cloudflare run check:release",
+    "verify:test": "npm --prefix cloudflare run verify:test"
+  }
+}

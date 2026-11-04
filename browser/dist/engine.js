@@ -1,10 +1,12 @@
-import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=29';
+import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=52';
 import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
 import {refillRack,hasMatchingNeighbors} from './rack.js?v=29';
-import {bottleFor,isBottleId} from './bottles.js?v=33';
+import {bottleFor,isBottleId} from './bottles.js?v=52';
 import {eject} from './ejection.js?v=29';
 import {insertedOrder} from './preparation-gesture.js?v=29';
+import {createWaterState,advanceWater,waterContact} from './water.js?v=52';
+import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=52';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;
 export const radiusFor=(level,blobSize=150)=>13*1.2**level*blobSize/100;
 // Matching blobs fuse for MERGE_DELAY seconds before combining; the result then
@@ -19,9 +21,10 @@ export function blob(level,x,y,vx=0,vy=0){
 export class Engine {
   constructor(seed=Date.now(),bottleId='classic'){
     this.bottleId=isBottleId(bottleId)?bottleId:'classic';
-    this.bottleVersion=this.vessel.BOTTLE_VERSION;this.blobs=[];this.score=0;this.shots=0;this.current=0;this.next=1;this.highestLevel=0;
+    this.bottleVersion=this.vessel.BOTTLE_VERSION;this.recordEpoch=FLASK_RECORD_EPOCH;this.blobs=[];this.score=0;this.shots=0;this.current=0;this.next=1;this.highestLevel=0;
     this.cooldown=0;this.over=false;this.endReason=null;this.seed=seed>>>0;this.fuseSerial=0;
     this.physics=normalizePhysics();
+    Object.defineProperty(this,'waterState',{value:createWaterState(),writable:true,configurable:true});
     this.rack=[];this.rackSerial=0;this.selectedId=null;this.incoming=this.newIncoming();
     this.rackEvents=refillRack(this,()=>this.newIncoming(),MAX_LEVEL);this.syncRack();
   }
@@ -113,6 +116,8 @@ export class Engine {
     const {bottleWalls,insideBottle,BOTTLE_MOUTH,FILL_LINE,updateBottleState}=this.vessel;
     this.cooldown=Math.max(0,this.cooldown-dt);
     const material=materialFor(this.physics);
+    const water=this.vessel.water;
+    if(water)advanceWater(this.waterState,dt);
     const bs=this.blobs,delay=instantMerge?0:MERGE_DELAY,pairs=new Map();
     for(const b of bs)if(b.fuse){const list=pairs.get(b.fuse.id);if(list)list.push(b);else pairs.set(b.fuse.id,[b]);}
     for(const [id,list] of pairs){
@@ -123,7 +128,8 @@ export class Engine {
     for(const b of bs){
       if(b.grow!==undefined&&(b.grow+=dt)>=MERGE_GROW)delete b.grow;
       const r=this.bodyRadius(b);b.renderRadius=r;
-      prepare(b,r,dt);bottleWalls(b);integrate(b,dt,material);measure(b,dt);b.age+=dt;
+      prepare(b,r,dt);bottleWalls(b);integrate(b,dt,material,water);measure(b,dt);b.age+=dt;
+      if(water)waterContact(b,water,this.waterState);
       if(b.ejection&&b.age>b.ejection.relaxation*7)delete b.ejection;
     }
     // Fusing partners ignore each other's contact and are drawn together.
@@ -176,6 +182,7 @@ export class Engine {
   }
   animateSpill(dt){
     if(!this.over||this.endReason!=='spill'||!Number.isFinite(dt)||dt<=0)return;
+    if(this.vessel.water)advanceWater(this.waterState,Math.min(dt,.05));
     this.spillAccumulator=(this.spillAccumulator??0)+Math.min(dt,.05);
     const material=materialFor(this.physics);
     const {bottleWalls}=this.vessel;
@@ -184,6 +191,7 @@ export class Engine {
     }
   }
   static restore(data){
+    if(data?.recordEpoch!==undefined&&(!Number.isSafeInteger(data.recordEpoch)||data.recordEpoch<0))return null;
     if(data?.bottleId!==undefined&&!isBottleId(data.bottleId))return null;
     if(data?.highestLevel!==undefined&&(!Number.isInteger(data.highestLevel)||data.highestLevel<0||data.highestLevel>MAX_LEVEL))return null;
     if(!data||!Array.isArray(data.blobs)||data.blobs.length>90||!Number.isSafeInteger(data.score)||data.score<0||!Number.isSafeInteger(data.shots)||data.shots<0||![data.current,data.next].every(x=>Number.isInteger(x)&&x>=0&&x<=MAX_LEVEL)||!Number.isFinite(data.cooldown)||typeof data.over!=='boolean'||!Number.isInteger(data.seed))return null;
@@ -191,7 +199,7 @@ export class Engine {
       if(!Number.isInteger(b.level)||b.level<0||b.level>MAX_LEVEL||!['x','y','vx','vy','age','danger'].every(k=>Number.isFinite(b[k]))||!['shape','spring'].every(k=>Array.isArray(b[k])&&b[k].length===24&&b[k].every(Number.isFinite)))return null;
     }
     if(data.endReason!==undefined&&data.endReason!==null&&!['spill','overflow'].includes(data.endReason))return null;
-    for(const b of data.blobs)if((b.inBottle!==undefined&&typeof b.inBottle!=='boolean')||(b.spilled!==undefined&&typeof b.spilled!=='boolean')||(b.hasEntered!==undefined&&typeof b.hasEntered!=='boolean'))return null;
+    for(const b of data.blobs)if((b.inBottle!==undefined&&typeof b.inBottle!=='boolean')||(b.spilled!==undefined&&typeof b.spilled!=='boolean')||(b.hasEntered!==undefined&&typeof b.hasEntered!=='boolean')||(b.missedEntry!==undefined&&(b.missedEntry!==true||!b.spilled)))return null;
     for(const b of data.blobs)if(b.ejection&&(!['stretch','taper','relaxation'].every(k=>Number.isFinite(b.ejection[k]))||b.ejection.stretch<1||b.ejection.stretch>2||b.ejection.taper<0||b.ejection.taper>.9||b.ejection.relaxation<.1||b.ejection.relaxation>1))return null;
     for(const b of data.blobs)if(b.restAspect&&(!Number.isFinite(b.restAspect.x)||!Number.isFinite(b.restAspect.y)||b.restAspect.x<.5||b.restAspect.x>2||b.restAspect.y<.5||b.restAspect.y>2))return null;
     for(const b of data.blobs)if((b.fuse!==undefined&&(!b.fuse||!Number.isSafeInteger(b.fuse.id)||b.fuse.id<1||!Number.isFinite(b.fuse.time)||b.fuse.time<0||b.fuse.time>MERGE_DELAY+1))||(b.grow!==undefined&&(!Number.isFinite(b.grow)||b.grow<0||b.grow>MERGE_GROW)))return null;
@@ -202,6 +210,8 @@ export class Engine {
     // Three capped values cannot be produced with only three slots and 2–32 entries.
     if(data.rack?.every(b=>b.level===MAX_LEVEL))return null;
     const restored=Object.assign(new Engine(undefined,data.bottleId??'classic'),data);
+    restored.recordEpoch=data.recordEpoch??0;
+    restored.waterState=createWaterState();
     const {bottleWalls,BOTTLE_VERSION,BOTTLE_FLOOR}=restored.vessel;
     // Older saves have no serial; unpaired fuses are dropped on the next step.
     restored.fuseSerial=Math.max(restored.fuseSerial??0,...data.blobs.map(b=>b.fuse?.id??0));

@@ -2,15 +2,17 @@
 from pathlib import Path
 from urllib.parse import quote
 from playwright.sync_api import sync_playwright,expect
-import json
+import json,os
+base=os.environ.get("SQUISH_TEST_URL","http://127.0.0.1:4173")
 out=Path('/tmp/squish-pocket-qa');out.mkdir(exist_ok=True)
 with sync_playwright() as p:
  browser=p.chromium.launch();page=browser.new_page(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True)
- page.add_init_script("const fixture=new URL(location.href).searchParams.get('teststate');if(fixture)localStorage.setItem('squish-pocket-v1',fixture);")
+ page.add_init_script("const fixture=new URL(location.href).searchParams.get('teststate');if(fixture){localStorage.setItem('squish-pocket-v1',fixture);localStorage.setItem('squish-pocket-selected-bottle','classic');const best=JSON.parse(fixture).best;localStorage.setItem('squish-pocket-achievements-v1',JSON.stringify({id:crypto.randomUUID(),token:crypto.randomUUID(),name:'Friend',score:best,highestTile:2,bottles:{classic:{score:best,highestTile:2}}}));}")
+ page.route('**/api/achievements',lambda route:route.fulfill(status=200,json={'reached2048':0,'record':{'score':4096,'name':'World'},'highestTile':256,'bottles':{'classic':{'record':{'score':4096,'name':'Original'},'highestTile':256}}}))
  errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def fixture(over=False,best=128):
   e={'bottleVersion':2,'blobs':[],'score':64,'shots':4,'current':2,'next':4,'cooldown':0,'over':over,'endReason':'spill' if over else None,'seed':123,'rack':[{'id':1,'level':0},{'id':2,'level':2},{'id':3,'level':4}],'rackSerial':3,'selectedId':2,'incoming':{'level':4,'side':'left'},'rackEvents':[],'physics':{'stiffness':10,'viscosity':0,'blobSize':150}}
-  page.goto('http://127.0.0.1:4173/?teststate='+quote(json.dumps({'version':1,'physicsDefaultsVersion':1,'engine':e,'started':True,'best':best,'sound':False})),wait_until='networkidle')
+  page.goto(base+'/?teststate='+quote(json.dumps({'version':1,'physicsDefaultsVersion':1,'engine':e,'started':True,'best':best,'sound':False})),wait_until='networkidle')
  fixture();expect(page.locator('#round-stats')).to_be_visible();expect(page.locator('#score')).to_have_text('64');expect(page.locator('#best')).to_have_text('128')
  page.locator('#start').click();expect(page.locator('#round-stats')).to_be_hidden();assert page.locator('.scores').count()==0
  assert 'Score' not in page.locator('#canvas').get_attribute('aria-label')

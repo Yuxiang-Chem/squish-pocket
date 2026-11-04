@@ -10,6 +10,14 @@ test('room host controls the shared bottle and start; public snapshots exclude c
   assert.throws(()=>chooseBottle(room,0,'classic'),/fixed/);
   assert.equal(JSON.stringify(publicRoom(room,0)).includes('hash-'),false);
 });
+test('water and laboratory matches use distinct host-selected vessels',()=>{
+  for(const bottle of ['classic-water','lab-flask-water','separating-funnel','conical-flask','separating-funnel-water','conical-flask-water']){
+    const room=setup();chooseBottle(room,0,bottle);startMatch(room,0,42,2000);
+    assert.equal(room.bottleId,bottle);assert.equal(publicRoom(room,1).bottleId,bottle);
+    assert.throws(()=>chooseBottle(room,0,'classic'),/fixed/);
+  }
+  assert.throws(()=>newRoom('ABC234','Host','unknown-water','hash'),/valid bottle/);
+});
 test('separate scores determine a winner only after both rounds end; ties and rematches work',()=>{
   const room=setup();startMatch(room,0,7,2000);
   assert.equal(progress(room,0,update(1,128,true)),true);assert.equal(room.phase,'playing');

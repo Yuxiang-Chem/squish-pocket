@@ -4,7 +4,14 @@ A soft-body physics merge game for phones. Shoot jelly blobs into a glass bottle
 
 **[Play in your browser](https://squish.chemisgreat.online/)**
 
-Choose **Classic** to play solo at your own pace, or **Multiplayer** to create or join a private two-player room with a six-character code (`GameRoom` Durable Object). Both modes let you choose the **Original bottle** or the separate **Three-neck flask** with a round body, tall central joint, and angled side necks. Each bottle saves its own Classic round; the original bottle remains the default.
+**[Test the latest candidate](https://squish-test.chemisgreat.online/)**
+
+All development now lives in this GitHub checkout. The old
+`/Users/chem/SquishPocket` path points here, and a verified archive preserves its
+older files. Releases go to the test site first; the official game changes only
+when a tested version is explicitly promoted. See [the release workflow](RELEASING.md).
+
+Choose **Classic** to play solo at your own pace, or **Multiplayer** to create or join a private two-player room with a six-character code (`GameRoom` Durable Object). Both modes let you choose the **Original bottle**, the **Three-neck flask**, or a **water-filled version of either shape**. Blobs float in the water; stronger shots dive below the surface and splash droplets into the air. Each bottle saves its own Classic round; the original bottle remains the default.
 
 The browser version is the current playable game. A separate, earlier native iPhone prototype is included for future development; its gameplay differs from the browser version and it has not been built or installed on iOS.
 
@@ -23,7 +30,7 @@ Pull a ready blob downward to charge and release to shoot, or hold **Shoot**. Wh
 
 In **Multiplayer**, the room host chooses the bottle and starts the match. Both players receive the same random seed in separate bottles, see live score updates and an on-demand opponent bottle preview, and the higher score wins once both rounds finish (with a 30-second reconnect grace period).
 
-The crown button opens **Achievements**: the shared count of players who reach 2048, the world high score and holder, the biggest tile, and your personal records. Each browser counts once across rounds. The current high-score holder can write a message inside the game for delivery to the creator's inbox, after Cloudflare email setup. Shared records and Multiplayer rooms need the Worker API; see [local development and deployment](cloudflare/README.md).
+The crown button opens **Achievements**: the shared count of players who reach 2048, the world high score and holder, the biggest tile, and your personal records. Each browser counts once across rounds. The current world-record holder of any bottle gets a congratulations page and can write a message inside the game for delivery to the creator's inbox. Shared records and Multiplayer rooms need the Worker API; see [local development and deployment](cloudflare/README.md).
 
 ## Project layout
 
@@ -53,6 +60,12 @@ Native checks and the remaining iOS validation limits are documented in [NATIVE.
 
 ## Deploy
 
-See [Cloudflare deployment](cloudflare/README.md). Credentials, local hosting bindings, build outputs, and deployment archives are excluded from this repository.
+Run `npm run deploy:test` from the repository root. The command runs checks,
+migrates the isolated test database, deploys the test Worker, and verifies every
+published game asset. `npm run deploy` also targets test. Official promotion uses
+`npm run deploy:production -- --tested-version ID` after approval of that candidate.
+See [release details](RELEASING.md) and [Cloudflare deployment](cloudflare/README.md).
+Credentials, local hosting bindings, build outputs, and deployment archives are
+excluded from this repository.
 
 An independent project inspired by [Sobosuba](https://sobosuba.com/), with original code, graphics, and branding. It is not an official Sobosuba port and includes no Sobosuba source code or assets.

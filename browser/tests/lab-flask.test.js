@@ -18,7 +18,7 @@ test('Reference flask has a higher vertical center neck and two angled side mout
   const center=g.mouths.find(m=>Math.abs(m.a.y-m.b.y)<.001),sides=g.mouths.filter(m=>m!==center);
   assert.ok(center);assert.ok(sides.every(m=>Math.abs(m.nx)>.25));
   assert.ok(sides.every(m=>(m.a.y+m.b.y)/2>center.a.y+25));
-  assert.ok(g.contains(180,300));assert.equal(g.contains(40,300),false);
+  assert.ok(g.contains(180,300));assert.ok(g.contains(40,300));assert.equal(g.contains(10,300),false);
   assert.equal(g.contains(132,160),false);assert.equal(g.contains(228,160),false);
 });
 test('Each real angled opening admits and releases particles across its own mouth plane',()=>{
@@ -58,6 +58,41 @@ test('All incoming values enter the lab flask from each slot at gentle, medium a
     }
     assert.equal(e.over,false,`value ${2**(level+1)}, slot ${slot}, force ${power}`);
     assert.ok(e.blobs[0].hasEntered);
+  }
+});
+test('Shots between either pair of necks spill even when their soft edges overlap a mouth',()=>{
+  for(const x of [123,237])for(const level of [0,1,2,3,4])for(const power of [0,.25,1]){
+    const e=new Engine(42,'lab-flask');
+    e.rack=[{id:1,level},{id:2,level:(level+1)%5},{id:3,level:(level+2)%5}];e.selectedId=1;e.syncRack();
+    assert.equal(e.shoot(0,power,true,{x,y:58}),true);
+    for(let i=0;i<240&&!e.over;i++)e.step(1/120);
+    assert.equal(e.over,true,`gap ${x}, level ${level}, force ${power}`);
+    assert.equal(e.endReason,'spill');assert.equal(e.blobs[0].missedEntry,true);
+    assert.equal(e.shoot(),false);
+  }
+});
+test('Angled gap misses from the ready slots fall visibly and preserve results after reload',()=>{
+  for(const [x,angle] of [[94,.35],[266,-.35],[94,.5],[266,-.5]]){
+    const e=new Engine(42,'lab-flask');
+    e.rack=[{id:1,level:0},{id:2,level:1},{id:3,level:2}];e.selectedId=1;e.syncRack();
+    e.score=64;e.shoot(angle,1,true,{x,y:58});
+    for(let i=0;i<240&&!e.over;i++)e.step(1/120);
+    assert.equal(e.over,true);assert.equal(e.blobs[0].missedEntry,true);
+    const b=e.blobs[0],start={x:b.x,y:b.y};
+    for(let i=0;i<24;i++)e.animateSpill(1/60);
+    assert.ok(b.y>start.y+25);assert.ok(x<180?b.x<start.x-25:b.x>start.x+25);
+    assert.equal(e.score,64);assert.equal(e.shots,1);
+    const restored=Engine.restore(JSON.parse(JSON.stringify(e)));
+    assert.ok(restored);assert.equal(restored.over,true);assert.equal(restored.endReason,'spill');
+    const y=restored.blobs[0].y;restored.animateSpill(1/30);assert.ok(restored.blobs[0].y>y);
+  }
+});
+test('Older saves stranded between necks also fall instead of balancing on the glass',()=>{
+  for(const x of [123,237]){
+    const e=new Engine(42,'lab-flask'),b=blob(0,x,160,0,80);
+    prepare(b,e.radius(0),1/120);measure(b,1/120);b.inBottle=true;b.hasEntered=true;e.blobs=[b];
+    const restored=Engine.restore(JSON.parse(JSON.stringify(e)));restored.step(1/120);
+    assert.equal(restored.over,true);assert.equal(restored.blobs[0].missedEntry,true);
   }
 });
 test('Legacy saves restore to the original bottle; each explicit bottle restores independently',()=>{

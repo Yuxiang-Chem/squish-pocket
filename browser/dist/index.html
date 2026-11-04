@@ -6,7 +6,7 @@
   <meta name="description" content="A pocketful of possibility. Aim, drop, and merge squishy little blobs in a relaxing physics game, made for your phone.">
   <title>Squish Pocket — a little room to play</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=36"><script type="module" src="app.js?v=36"></script>
+  <link rel="stylesheet" href="style.css?v=52"><script type="module" src="app.js?v=52"></script>
 </head>
 <body>
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -38,7 +38,13 @@
   <button id="mode-back" class="menu-back" type="button">← Choose a mode</button><span id="mode-eyebrow" class="eyebrow">MAKE A LITTLE ROOM</span><h1 id="mode-title">Classic</h1><p id="mode-description" class="menu-intro"></p>
   <div id="bottle-options"><h2 class="selection-title">Choose your bottle</h2><div class="bottle-cards" role="group" aria-label="Choose bottle">
    <button class="bottle-card" data-bottle="classic" aria-pressed="true"><canvas id="menu-bottle-classic" width="180" height="210" aria-hidden="true"></canvas><span><strong>Original bottle</strong><small>A familiar little opening.</small></span><i aria-hidden="true">✓</i></button>
-   <button class="bottle-card" data-bottle="lab-flask" aria-pressed="false"><canvas id="menu-bottle-flask" width="180" height="210" aria-hidden="true"></canvas><span><strong>Three-neck flask</strong><small>A little laboratory experiment.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="lab-flask" aria-pressed="false"><canvas id="menu-bottle-flask" width="180" height="210" aria-hidden="true"></canvas><span><strong>Three-neck flask</strong><small>Three openings. Mind the gaps.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="classic-water" aria-pressed="false"><canvas id="menu-bottle-classic-water" width="180" height="210" aria-hidden="true"></canvas><span><strong>Original bottle · water</strong><small>A familiar bottle with a little blue tide.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="lab-flask-water" aria-pressed="false"><canvas id="menu-bottle-flask-water" width="180" height="210" aria-hidden="true"></canvas><span><strong>Three-neck flask · water</strong><small>Three openings and a little blue tide.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="separating-funnel" aria-pressed="false"><canvas width="180" height="210" aria-hidden="true"></canvas><span><strong>Separating funnel</strong><small>A flared, frosted neck and a closed tap.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="conical-flask" aria-pressed="false"><canvas width="180" height="210" aria-hidden="true"></canvas><span><strong>Conical flask</strong><small>A narrow neck and a broad, flat base.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="separating-funnel-water" aria-pressed="false"><canvas width="180" height="210" aria-hidden="true"></canvas><span><strong>Separating funnel · water</strong><small>A frosted neck and a little blue tide.</small></span><i aria-hidden="true">✓</i></button>
+   <button class="bottle-card" data-bottle="conical-flask-water" aria-pressed="false"><canvas width="180" height="210" aria-hidden="true"></canvas><span><strong>Conical flask · water</strong><small>A broad base with floating little blobs.</small></span><i aria-hidden="true">✓</i></button>
   </div></div>
   <div id="classic-actions"><button id="classic-play" class="primary">Play Classic <span class="blob-caption" aria-hidden="true">•ᴗ•</span></button><p id="classic-save-note" class="menu-footnote">Each bottle keeps its own saved round.</p></div>
   <section id="multiplayer-setup" class="hidden">
@@ -89,6 +95,7 @@
         <span class="eyebrow" id="overlay-kicker">HELLO, LITTLE DAYDREAMER</span>
         <h2 id="overlay-title">A pocketful<br>of possibility.</h2>
         <p id="overlay-description">Drop. Match. Squish. Repeat.</p>
+        <p id="round-bottle" class="round-bottle hidden"></p>
         <div id="round-stats" class="round-stats hidden" aria-label="Round results">
           <div><span class="label">ROUND SCORE</span><strong id="score">0</strong></div>
           <div><span class="label">PERSONAL BEST</span><strong id="best">0</strong></div>
@@ -120,25 +127,57 @@
  <h2 id="achievements-title">A little hall of fame.</h2>
  <p class="achievement-intro">Every 2048 starts with a tiny two.</p>
  <div class="achievement-card achievement-club"><span class="achievement-badge" aria-hidden="true">2048</span><div><strong id="achievement-count">—</strong><span id="achievement-count-label">players have reached 2048</span></div></div>
- <div class="achievement-card achievement-world"><span class="label">WORLD HIGH SCORE</span><strong id="achievement-record">—</strong><span id="achievement-holder">A little room for a new record</span><span>Biggest merge anywhere: <b id="achievement-global-tile">—</b></span></div>
- <div class="achievement-personal"><span id="achievement-milestone">Your next little milestone: 2048</span><div><span>YOUR BIGGEST MERGE <b id="achievement-personal-tile">2</b></span><span>YOUR BEST SCORE <b id="achievement-personal-score">0</b></span></div></div>
- <form id="achievement-name-form"><label for="achievement-name">Your name on the board</label><div class="achievement-name-row"><input id="achievement-name" maxlength="32" required autocomplete="nickname" placeholder="A squishy friend"><button class="small-button" type="submit">Save name</button></div></form>
+ <div class="achievement-bottle-tabs" role="tablist" aria-label="Bottle records">
+  <button type="button" id="achievement-tab-all" role="tab" aria-controls="achievement-page-all" aria-selected="true">All bottles</button>
+  <button type="button" id="achievement-tab-classic" role="tab" aria-controls="achievement-page-classic" aria-selected="false" tabindex="-1">Original</button>
+  <button type="button" id="achievement-tab-lab-flask" role="tab" aria-controls="achievement-page-lab-flask" aria-selected="false" tabindex="-1">Three-neck</button>
+  <button type="button" id="achievement-tab-classic-water" role="tab" aria-controls="achievement-page-classic-water" aria-selected="false" tabindex="-1">Original water</button>
+  <button type="button" id="achievement-tab-lab-flask-water" role="tab" aria-controls="achievement-page-lab-flask-water" aria-selected="false" tabindex="-1">Flask water</button>
+  <button type="button" id="achievement-tab-separating-funnel" role="tab" aria-controls="achievement-page-separating-funnel" aria-selected="false" tabindex="-1">Separating funnel</button>
+  <button type="button" id="achievement-tab-conical-flask" role="tab" aria-controls="achievement-page-conical-flask" aria-selected="false" tabindex="-1">Conical flask</button>
+  <button type="button" id="achievement-tab-separating-funnel-water" role="tab" aria-controls="achievement-page-separating-funnel-water" aria-selected="false" tabindex="-1">Funnel water</button>
+  <button type="button" id="achievement-tab-conical-flask-water" role="tab" aria-controls="achievement-page-conical-flask-water" aria-selected="false" tabindex="-1">Conical water</button>
+ </div>
+ <div id="achievement-pages" class="achievement-pages" role="region" aria-label="Swipe to browse bottle records" tabindex="0">
+  <section id="achievement-page-all" class="achievement-page" role="tabpanel" aria-labelledby="achievement-tab-all">
+   <h3 class="achievement-bottle-title">All bottles <span>Every little achievement</span></h3>
+   <div class="achievement-card achievement-world"><span class="label">WORLD HIGH SCORE</span><strong id="achievement-record">—</strong><span id="achievement-holder">A little room for a new record</span><span>Biggest merge anywhere: <b id="achievement-global-tile">—</b></span></div>
+   <div class="achievement-personal"><span id="achievement-milestone">Your next little milestone: 2048</span><div><span>YOUR BIGGEST MERGE <b id="achievement-personal-tile">2</b></span><span>YOUR BEST SCORE <b id="achievement-personal-score">0</b></span></div></div>
+  </section>
+ </div>
+ <div class="achievement-page-controls"><button type="button" id="achievement-previous" aria-label="Previous bottle records">‹</button><p>Swipe to compare bottles <span id="achievement-page-number" aria-live="polite">1 / 9</span></p><button type="button" id="achievement-next" aria-label="Next bottle records">›</button></div>
+ <form id="achievement-name-form"><label for="achievement-name">Your name on the board (optional)</label><div class="achievement-name-row"><input id="achievement-name" maxlength="32" autocomplete="nickname" placeholder="Your name (optional)"><button class="small-button" type="submit">Save name</button></div></form>
  <div class="achievement-sync"><p id="achievement-status" role="status" aria-live="polite">Connecting to shared records…</p><button class="text-button" id="achievement-refresh" type="button">Refresh</button></div>
- <div class="record-message-section"><h3>A note from the top.</h3><p id="record-message-locked">Hold the world high score to unlock a message to the creator. Equal scores keep the first record holder.</p>
+ <div class="record-message-section"><h3>A note from the top.</h3><p id="record-message-locked">Hold the world high score in any bottle to unlock a message to the creator. Equal scores keep the first record holder.</p>
  <form id="record-message-form" class="hidden">
-  <p>You’re the record holder! Leave the creator a little message.</p>
+  <p>You’re a record holder! Leave the creator a little message.</p>
+  <label for="record-bottle">Your record</label><select id="record-bottle" name="bottle"></select>
   <label for="record-message">Your message</label><textarea id="record-message" rows="4" maxlength="2000" required placeholder="A little victory, a suggestion, or just hello…"></textarea>
   <label for="record-reply">Your email <span>(optional, for a reply)</span></label><input id="record-reply" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com">
   <p id="record-email-note"></p><button id="record-send" class="primary" type="submit">Send to the creator <svg><use href="#i-arrow"/></svg></button>
   <p id="record-message-status" role="status" aria-live="polite"></p>
  </form></div>
- <p class="achievement-footnote">One player per browser. Reaching 2048 in the bottle or the ready row counts once, even across rounds. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.</p>
+ <p class="achievement-footnote">One player per browser. Reaching 2048 in the bottle or the ready row counts once, even across rounds. Older scores without a bottle label remain under All bottles. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.</p>
+</dialog>
+<dialog id="champion-page" class="champion-page" aria-labelledby="champion-title" aria-describedby="champion-description">
+ <button class="icon-button close-dialog" data-close aria-label="Close congratulations"><svg><use href="#i-close"/></svg></button>
+ <div class="champion-confetti" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+ <span class="eyebrow">A LITTLE BOTTLE. A BIG ACHIEVEMENT.</span>
+ <div class="champion-medal" aria-hidden="true"><svg><use href="#i-crown"/></svg></div>
+ <h2 id="champion-title">You’re number one!</h2>
+ <p id="champion-description">A new world record, made one little merge at a time.</p>
+ <div class="champion-record"><canvas id="champion-bottle-preview" width="180" height="210" aria-hidden="true"></canvas><div><span id="champion-bottle-name"></span><strong id="champion-score">0</strong><span>WORLD HIGH SCORE</span></div></div>
+ <p id="champion-note" class="champion-note">Your bottle has a new champion. That’s you.</p>
+ <form id="champion-name-form" class="hidden"><label for="champion-name">Leave your name on the board? <span>It’s optional.</span></label><div class="achievement-name-row"><input id="champion-name" maxlength="32" autocomplete="nickname" placeholder="Your name (optional)"><button class="small-button" type="submit">Save name</button></div></form>
+ <p id="champion-name-status" role="status" aria-live="polite"></p>
+ <button id="champion-email" class="primary" type="button">Email the creator <svg><use href="#i-arrow"/></svg></button>
+ <button class="text-button" data-close type="button">Keep squishing</button>
 </dialog>
 <dialog id="guide" aria-labelledby="guide-title">
  <button class="icon-button close-dialog" data-close aria-label="Close guide"><svg><use href="#i-close"/></svg></button>
  <span class="eyebrow">A LITTLE GUIDE</span><h2 id="guide-title">Make room for<br>something bigger.</h2>
  <div class="guide-row"><span>01</span><div><h3>Choose one of three</h3><p>Three jelly blobs wait in a row. The middle separates the left and right blobs. Tap any one to select it. Lift a blob upward, then move it left or right to rearrange the row. Neighbors slide aside to make room; release in the preparation row to place it. Lifting the middle blob to the right pushes the right blob into the middle. Release far away to return to the original place. Drag a blob into a matching one to merge on contact. Contacts are checked throughout dragging and the return journey, including the two sides. Matching neighbors combine automatically until the middle differs from both sides. Equal left and right blobs stay separate until you bring them together. Matching new arrivals can combine as they enter. Values can grow to 4096. The ‹ and › buttons beside Shoot select the blob to the left or right. Keyboard: 1, 2, 3 select a blob.</p></div></div>
- <div class="guide-row"><span>02</span><div><h3>Choose your force</h3><p>Pull any ready blob downward, straight or diagonally toward the bottle, to build force; the aiming arrow appears as soon as it starts charging. Release to shoot it from its own place in the row; it does not jump to the middle first. Choose Original bottle for the wide opening, or Three-neck flask for the laboratory shape. In the flask, aim through a neck; glass between the necks can bounce a shot or cause a spill. Side blobs can aim widely toward the far side but only gently toward their nearer rim. Pull farther for more force; pull back to the starting height or cancel the gesture to stop. A lifting gesture stays in preparation mode even when you lower it again. You can also hold Shoot to charge up: slide your finger up for more force or down for less, and left or right to turn the arrow, then release to fire the selected blob. Slide down to 0% and release to cancel. Shoot stays ready while other blobs move or refill; you can also grab another ready blob before its previous movement finishes. A quick press is gentle; a longer hold is stronger. You can also drag inside the glass to aim: drag farther for more force and release to shoot. Dragging a ready blob cannot place it inside the bottle. Keyboard: left/right aim, up/down choose force, Space shoots.</p></div></div>
+ <div class="guide-row"><span>02</span><div><h3>Choose your force</h3><p>Pull any ready blob downward, straight or diagonally toward the bottle, to build force; the aiming arrow appears as soon as it starts charging. Release to shoot it from its own place in the row; it does not jump to the middle first. Choose Original bottle for the wide opening, Three-neck flask for three openings, or try the Separating funnel and Conical flask. The Separating funnel has a wide, flared opening; aim into the Conical flask’s narrow neck. The funnel’s tap stays closed. In the flask, aim through one of the three openings. Shooting between the necks makes the blob fall outside and ends the round. Side blobs can aim widely toward the far side but only gently toward their nearer rim. Pull farther for more force; pull back to the starting height or cancel the gesture to stop. A lifting gesture stays in preparation mode even when you lower it again. You can also hold Shoot to charge up: slide your finger up for more force or down for less, and left or right to turn the arrow, then release to fire the selected blob. Slide down to 0% and release to cancel. Shoot stays ready while other blobs move or refill; you can also grab another ready blob before its previous movement finishes. A quick press is gentle; a longer hold is stronger. You can also drag inside the glass to aim: drag farther for more force and release to shoot. Dragging a ready blob cannot place it inside the bottle. Keyboard: left/right aim, up/down choose force, Space shoots.</p></div></div>
  <div class="guide-row"><span>03</span><div><h3>More little friends</h3><p>New blobs shoot in from the left or right with values 2, 4, 8, 16, or 32. They bump, push, and squash against the other ready blobs. Matching neighbors merge on contact. Stiffness and viscosity are fixed for everyone. Refill continues until three are ready. Merges in the pile earn points.</p></div></div>
  <div class="guide-row"><span>04</span><div><h3>Mind the dotted line</h3><p>A partially spilled blob stays in play while any part is inside. The round ends only once the whole blob slides out; you can watch it fall before the result appears. The dotted line is a capacity guide. Lifting and rearranging never shoot. Downward pulls launch only on release.</p></div></div>
  <p class="guide-footer">Your game saves in this browser. On iPhone, use Safari’s Share menu → Add to Home Screen for an app-like view.</p>

@@ -1,0 +1,61 @@
+{
+  "name": "squish-pocket-test",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-02",
+  "assets": {
+    "directory": "../browser/dist",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROOMS",
+        "class_name": "GameRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-game-rooms",
+      "new_sqlite_classes": [
+        "GameRoom"
+      ]
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "ACHIEVEMENTS",
+      "database_name": "squish-pocket-achievements-test",
+      "database_id": "1724b1c3-701c-40ca-b6c8-61b7eb233164",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "destination_address": "chem.xjtlu@gmail.com"
+    }
+  ],
+  "vars": {
+    "EMAIL_FROM": "records@chemisgreat.online",
+    "EMAIL_ENABLED": "false"
+  },
+  "observability": {
+    "enabled": true,
+    "traces": {
+      "enabled": true
+    }
+  },
+  "routes": [
+    {
+      "pattern": "squish-test.chemisgreat.online",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "account_id": "23040aae0e514cea850a8b561f3e19f4"
+}

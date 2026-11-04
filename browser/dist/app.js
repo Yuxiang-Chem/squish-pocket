@@ -1,15 +1,15 @@
-import {createStartPage} from './start-page.js?v=36';
-import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=33';
+import {createStartPage} from './start-page.js?v=52';
+import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=52';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
-import {RackMotion} from './rack-motion.js?v=33';
-import {isBottleId} from './bottles.js?v=33';
+import {RackMotion} from './rack-motion.js?v=52';
+import {isBottleId} from './bottles.js?v=52';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=33';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=52';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
-import {connectAchievements} from './achievements.js?v=31';
+import {connectAchievements} from './achievements.js?v=52';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
@@ -47,7 +47,8 @@ restoreBottle(selectedBottle,true);
 best=Math.max(best,engine.score);
 highestSeen=Math.max(0,...engine.blobs.map(b=>b.level));
 rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
-const achievements=connectAchievements({getEngine:()=>engine,getBest:()=>best,cancelAim,toast});
+const achievements=connectAchievements({getEngine:()=>engine,getBest:()=>best,
+  canCelebrate:()=>!started||(engine.over&&endedShown)||(gameMode==='multiplayer'&&activeRoom?.phase==='finished'),cancelAim,toast});
 best=Math.max(best,achievements.profile.score);
 achievements.observe(engine,best);
 
@@ -91,7 +92,8 @@ function showOverlay({kicker,title,description,button,action,secondary,secondary
   cancelAim();overlay.classList.remove('hidden');
   overlay.querySelector('.intro-friends').classList.toggle('hidden',!friends);
   $('round-stats').classList.toggle('hidden',!stats);
-  if(stats)void achievements.sync(true);
+  $('round-bottle').classList.toggle('hidden',!stats);
+  if(stats){achievements.renderRoundStats();void achievements.sync(true);}
   $('overlay-kicker').textContent=kicker;$('overlay-title').innerHTML=title;
   $('overlay-description').textContent=description;$('start').querySelector('span').textContent=button;
   $('start').onclick=action;$('secondary').classList.toggle('hidden',!secondary);
@@ -125,7 +127,7 @@ function finish(){
   if(endedShown)return;endedShown=true;cancelAim();best=Math.max(best,engine.score);save();updateHUD();
   if(gameMode==='multiplayer'){shell.publish();showMatchOverlay();return;}
   const spilled=engine.endReason==='spill';
-  showOverlay({kicker:spilled?'OUTSIDE THE BOTTLE':engine.score>0&&engine.score>=best?'A NEW PERSONAL BEST':'A LOVELY LITTLE PILE',title:spilled?'A little spill.':'Full of feelings.',description:spilled?'Game over — a blob fell outside the bottle.':`${engine.shots} little drops`,button:'One more round',action:newGame,footnote:'THERE’S ALWAYS ROOM FOR A FRESH START.',friends:true,stats:true});
+  showOverlay({kicker:spilled?'OUTSIDE THE BOTTLE':engine.score>0&&engine.score>=achievements.roundRecords().personalBest?'A NEW PERSONAL BEST':'A LOVELY LITTLE PILE',title:spilled?'A little spill.':'Full of feelings.',description:spilled?'Game over — a blob fell outside the bottle.':`${engine.shots} little drops`,button:'One more round',action:newGame,footnote:'THERE’S ALWAYS ROOM FOR A FRESH START.',friends:true,stats:true});
 }
 // Shots leave from wherever the selected ready blob currently is.
 function launchPoint(){
@@ -146,7 +148,7 @@ function shoot(){
   cancelAim();
 }
 function updateHUD(){
-  $('score').textContent=engine.score.toLocaleString();$('best').textContent=best.toLocaleString();
+  achievements.renderRoundStats();
   engine.rackOrder().forEach((item,i)=>{
     const button=$(`rack-${i}`);button.dataset.blobId=item.id;
     positionChoice(item,i);
@@ -474,7 +476,7 @@ function drawAimGuide(){
 function draw(elapsed=1/60){
   ctx.clearRect(0,0,WIDTH,HEIGHT);
   prepareOuterCanvas();
-  engine.vessel.drawBottleBack(ctx);
+  engine.vessel.drawBottleBack(ctx,engine.waterState);
   ctx.fillStyle='#6c968510';
   for(let x=38;x<WIDTH-25;x+=22)for(let y=236;y<HEIGHT-28;y+=22)if(engine.vessel.insideBottle(x,y)){ctx.beginPath();ctx.arc(x,y,.65,0,Math.PI*2);ctx.fill();}
   const danger=Math.max(0,...engine.blobs.map(b=>b.danger));
@@ -484,12 +486,17 @@ function draw(elapsed=1/60){
   ctx.fillStyle=danger>0?'#cf725d':'#9fa58e';ctx.fillText(danger>0?'MAKE A LITTLE ROOM':'A LITTLE ROOM TO GROW',WIDTH/2,engine.vessel.FILL_LINE+14);
   for(const b of started?engine.blobs:engine.bottleId==='classic'?demo:[]){
     const box=b.bounds,outside=box&&(box.minX<0||box.maxX>WIDTH||box.minY<0||box.maxY>HEIGHT);
-    drawBlob(b,1,outside?dragCtx:ctx);
+    const paint=outside?dragCtx:ctx;
+    paint.save();
+    // Smoothing a concave membrane can round across a glass corner. Keep the
+    // rendered outline within the same vessel once every particle is inside.
+    if(engine.vessel.trace&&!b.spilled&&b.nodes?.every(p=>p.bottleSide)){engine.vessel.trace(paint,true);paint.clip();}
+    drawBlob(b,1,paint);paint.restore();
   }
   for(const p of particles){ctx.globalAlpha=p.life/.6;ctx.fillStyle=colors[p.level];ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.2,2.8*p.life/.6),0,Math.PI*2);ctx.fill();}
   ctx.globalAlpha=1;
   ctx.globalAlpha=1;
-  engine.vessel.drawBottleFront(ctx);
+  engine.vessel.drawBottleFront(ctx,engine.waterState);
   if(started&&(!engine.over||!endedShown)){
     if((keyboardAiming||aimGesture)&&!aimCancelled)drawAimGuide();
     drawRack(elapsed);

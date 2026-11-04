@@ -1,5 +1,5 @@
 export const ROOM_TTL=6*60*60*1000,RECONNECT_GRACE=30000;
-export const validBottle=id=>id==='classic'||id==='lab-flask';
+export const validBottle=id=>['classic','lab-flask','classic-water','lab-flask-water','separating-funnel','conical-flask','separating-funnel-water','conical-flask-water'].includes(id);
 export const roomError=(message,status=400)=>{throw Object.assign(new Error(message),{status});};
 export function playerName(name,fallback){
   if(typeof name!=='string')return fallback;
