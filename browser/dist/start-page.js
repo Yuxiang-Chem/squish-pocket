@@ -1,9 +1,9 @@
-import {defaultPhysicsFor} from './physics-settings.js?v=72';
-import {renderThreeAnnouncement,loadThreeAnnouncement} from './announcement.js?v=72';
-import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=72';
-import {BOTTLES} from './bottles.js?v=72';
-import {radiusFor} from './engine.js?v=72';
-import {RoomClient} from './room-client.js?v=72';
+import {defaultPhysicsFor} from './physics-settings.js?v=75';
+import {renderThreeAnnouncement,loadThreeAnnouncement} from './announcement.js?v=75';
+import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=75';
+import {BOTTLES} from './bottles.js?v=75';
+import {radiusFor} from './engine.js?v=75';
+import {RoomClient} from './room-client.js?v=75';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
 const blobCaption='<span class="blob-caption" aria-hidden="true">•ᴗ•</span>';

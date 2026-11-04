@@ -369,3 +369,25 @@ Lab test release caused the first promotion guard to reject mismatched assets.
 The exact verified candidate was reinstated on test, then promoted through the
 guard to official `201ffe69-82ef-41f3-9dd0-f500671fbc85`. All 32 official assets
 and both mode APIs matched source. Lab is excluded from this official release.
+
+## Three Combine at 120% of Two Combine — 2026-11-05
+
+Assets v75 change the Three Combine multiplier from 1.3 to 1.2, consistently
+for physical membranes, ready blobs and opponent previews. Two Combine keeps
+its existing base sizes: Original 150%, Three-neck 120%, conical/funnel 100%.
+Three Combine therefore uses effective 180%, 144%, and 120%, including water
+variants. Existing 1.3-scale saves resize once to 1.2 without resetting scores,
+shots, milestone history or saved round identity. No achievement reset, schema
+change or new announcement window is included. The existing notice/settings
+copy now describes the current 20% increase.
+
+Test `8f3f1b74-5a3f-4513-b002-b36a83e16aa6`, source fingerprint
+`2a625bd8ff50f39c0213c78c5e6dc1e86ae18f1955a9c6d0199f0a4b8cdaad85`,
+passed all 236 automated checks plus local/live-test Chrome/WebKit checks for
+every vessel's bottle/ready ratio and one-time 1.3-to-1.2 saved-round resizing.
+The official candidate excludes Lab; its development remains test-only.
+
+Promoted that exact candidate through the release guard to official
+`595ca74b-1ce1-4611-90c3-ad9a62544064`. All 32 assets and both achievement APIs
+matched source. No migration was pending. Lab remains test-only; scores and
+achievement history are not reset by this adjustment.

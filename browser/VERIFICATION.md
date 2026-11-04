@@ -340,3 +340,20 @@ Published on 2026-11-04 as Worker version `14512392-e5ea-4a57-ab1f-1c79202f6f7b`
 - Local and live-test Chrome/WebKit checked all sixteen vessel/rule defaults,
   water variants, eight Top 5 boards, Home/End navigation and phone layouts with
   shared writes mocked. Official serves only 32 assets and has no Lab code.
+
+### Three Combine 20% size increase — 2026-11-05
+
+- Mode multiplier is 1.2 for every vessel and water variant. Two Combine bases
+  are unchanged; effective Three sizes are Original 180%, Three-neck 144%, and
+  conical/funnel 120%. Both in-bottle and ready membranes use this ratio.
+- Existing 1.3-scale Three saves shrink once on restore, preserving score,
+  shots, highest tile, milestone counts and round identity. Subsequent reloads
+  leave radii/nodes unchanged. All vessel containment and entry checks pass.
+- Verified test `8f3f1b74-5a3f-4513-b002-b36a83e16aa6` passed 236 automated
+  checks (194 browser Node, 37 backend/release, five runtime), with all 32
+  assets and both APIs matching source. Local/live Chrome/WebKit verified all
+  eight vessel body/ready ratios and representative saved-round restoration,
+  with all API writes mocked. Lab is excluded from this official candidate.
+- Official `595ca74b-1ce1-4611-90c3-ad9a62544064` serves the exact verified
+  v75 source, with all 32 assets and both APIs matching. No migration or
+  achievement reset was included. Two Combine's base sizes remain unchanged.

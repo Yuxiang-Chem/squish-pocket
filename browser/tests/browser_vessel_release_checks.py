@@ -22,7 +22,7 @@ with sync_playwright() as p:
     key='squish-pocket-v1'+(':three' if mode=='three' else '')+(':'+id if id!='classic' else '')
     saved=page.evaluate('key=>JSON.parse(localStorage.getItem(key)).engine',key)
     assert saved['physics']=={'stiffness':10,'viscosity':0,'blobSize':size},(id,mode,saved['physics'])
-    assert saved['blobScale']==(1.3 if mode=='three' else 1)
+    assert saved['blobScale']==(1.2 if mode=='three' else 1)
    page.locator('#achievements').click();assert page.locator('#achievement-tab-all').count()==0;assert page.locator('#achievement-page-all').count()==0
    assert page.locator('.achievement-bottle-tabs [role=tab]').count()==8
    for id in ids:

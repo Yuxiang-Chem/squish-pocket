@@ -1,8 +1,8 @@
-import {renderThreeAnnouncement} from './announcement.js?v=72';
-import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=72';
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=72';
-import {BOTTLES} from './bottles.js?v=72';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=72';
+import {renderThreeAnnouncement} from './announcement.js?v=75';
+import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=75';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=75';
+import {BOTTLES} from './bottles.js?v=75';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=75';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);

@@ -6,20 +6,45 @@ import {clusterLayout} from '../dist/preparation.js';
 import {prepare,measure} from '../dist/softbody.js';
 import {BOTTLES} from '../dist/bottles.js';
 const dt=1/120;
-test('Three Combine has 30% larger physical membranes and ready blobs without cumulative scaling',()=>{
+test('Three Combine is exactly 120% of each Two Combine vessel, including all water variants',()=>{
+ for(const id of Object.keys(BOTTLES)){
+  const two=new Engine(42,id,'two'),three=new Engine(42,id,'three');
+  const base=id.startsWith('lab-flask')?120:id.includes('conical')||id.includes('funnel')?100:150;
+  assert.equal(two.physics.blobSize,base);assert.equal(three.physics.blobSize,base);
+  for(let level=0;level<=11;level++)assert.ok(Math.abs(three.radius(level)/two.radius(level)-1.2)<1e-12);
+  assert.equal(three.physics.blobSize*three.rules.blobScale,base===150?180:base===120?144:120);
+ }
+});
+test('existing 130% Three Combine saves shrink once without changing progress or milestones',()=>{
+ for(const id of Object.keys(BOTTLES)){
+  const old=new Engine(42,id,'three');old.blobScale=1.3;old.score=27;old.shots=7;old.highestLevel=2;old.milestoneCount=2;
+  const b=blob(1,180,300);b.renderRadius=radiusFor(1,old.physics.blobSize,'two')*1.3;
+  prepare(b,b.renderRadius,dt);measure(b,dt);b.inBottle=true;b.hasEntered=true;
+  for(const n of b.nodes){n.bottleSide=true;n.px=n.x-.25;n.py=n.y+.4;}
+  old.blobs=[b];const oldRadius=b.renderRadius;
+  const restored=Engine.restore(JSON.parse(JSON.stringify(old)));
+  assert.equal(restored.blobScale,1.2);assert.equal(restored.score,27);assert.equal(restored.shots,7);assert.equal(restored.highestLevel,2);
+  assert.equal(restored.milestoneRun,old.milestoneRun);assert.equal(restored.milestoneCount,2);
+  assert.ok(Math.abs(restored.blobs[0].renderRadius/oldRadius-1.2/1.3)<1e-12);
+  assert.ok(restored.blobs[0].nodes.every(n=>restored.vessel.insideBottle(n.x,n.y,.001)));
+  const again=Engine.restore(JSON.parse(JSON.stringify(restored)));
+  assert.equal(again.blobs[0].renderRadius,restored.blobs[0].renderRadius);assert.deepEqual(again.blobs[0].nodes,restored.blobs[0].nodes);
+ }
+});
+test('Three Combine has 20% larger physical membranes and ready blobs without cumulative scaling',()=>{
  const two=new Engine(42),three=new Engine(42,'classic','three');
  for(let level=0;level<=11;level++){
-  assert.ok(Math.abs(three.radius(level)/two.radius(level)-1.3)<1e-12);
+  assert.ok(Math.abs(three.radius(level)/two.radius(level)-1.2)<1e-12);
   assert.equal(two.radius(level),radiusFor(level));
  }
  const a=blob(0,180,300),b=blob(0,180,300);prepare(a,two.radius(0),dt);prepare(b,three.radius(0),dt);
  const area=body=>Math.abs(body.nodes.reduce((sum,p,i)=>{const q=body.nodes[(i+1)%24];return sum+p.x*q.y-p.y*q.x;},0))/2;
- assert.ok(Math.abs(area(b)/area(a)-1.3**2)<1e-10);
+ assert.ok(Math.abs(area(b)/area(a)-1.2**2)<1e-10);
  const rack=[{id:1,level:0},{id:2,level:1},{id:3,level:2}],motion=new RackMotion();motion.setPhysics(two.physics,'two');motion.reset(rack);
  const old=motion.items.map(b=>b.body.renderRadius);
  motion.setPhysics(three.physics,'three');
  for(let n=0;n<10;n++)motion.setPhysics(three.physics,'three');
- motion.items.forEach((b,i)=>assert.ok(Math.abs(b.body.renderRadius/old[i]-1.3)<1e-12));
+ motion.items.forEach((b,i)=>assert.ok(Math.abs(b.body.renderRadius/old[i]-1.2)<1e-12));
  motion.setPhysics(two.physics,'two');motion.items.forEach((b,i)=>assert.ok(Math.abs(b.body.renderRadius-old[i])<1e-12));
 });
 test('older Three Combine saves grow once, keep score and shots, and fit entered blobs to the glass',()=>{
@@ -29,7 +54,7 @@ test('older Three Combine saves grow once, keep score and shots, and fit entered
   for(const n of b.nodes)n.bottleSide=true;
   old.vessel.bottleWalls(b);measure(b,dt);old.blobs=[b];
   const data=JSON.parse(JSON.stringify(old));delete data.blobScale;
-  const e=Engine.restore(data);assert.equal(e.score,27);assert.equal(e.shots,7);assert.equal(e.highestLevel,3);assert.equal(e.blobScale,1.3);
+  const e=Engine.restore(data);assert.equal(e.score,27);assert.equal(e.shots,7);assert.equal(e.highestLevel,3);assert.equal(e.blobScale,1.2);
   assert.equal(e.blobs[0].renderRadius,e.radius(1));
   for(const n of e.blobs[0].nodes)assert.ok(e.vessel.insideBottle(n.x,n.y,.001),id);
   const again=Engine.restore(JSON.parse(JSON.stringify(e)));assert.equal(again.blobs[0].renderRadius,e.blobs[0].renderRadius);
@@ -37,12 +62,12 @@ test('older Three Combine saves grow once, keep score and shots, and fit entered
  }
  const e=new Engine(42,'classic','three');e.blobScale=1;e.blobs=[blob(0,180,300)];prepare(e.blobs[0],radiusFor(0),dt);
  const legacy=JSON.parse(JSON.stringify(e));delete legacy.blobScale;delete legacy.blobs[0].renderRadius;
- const resized=Engine.restore(legacy);assert.ok(Math.abs(resized.blobs[0].nodes[0].x-180-radiusFor(0)*1.3)<1e-9);
+ const resized=Engine.restore(legacy);assert.ok(Math.abs(resized.blobs[0].nodes[0].x-180-radiusFor(0)*1.2)<1e-9);
 });
 test('larger Three Combine spawn values enter every vessel from all ready slots',()=>{
  for(const id of Object.keys(BOTTLES))for(const level of [0,1,2])for(const slot of [0,1,2])for(const power of [0,1]){
   const e=new Engine(42,id,'three');e.rack=[{id:1,level:0},{id:2,level:1},{id:3,level:2}];e.rack[slot].level=level;e.rackSerial=3;e.selectedId=slot+1;e.syncRack();
-  const origin=clusterLayout(e.rackOrder(),195,e.vessel)[slot];assert.ok(e.shoot(0,power,true,origin));
+  const origin=clusterLayout(e.rackOrder(),e.physics.blobSize*e.rules.blobScale,e.vessel)[slot];assert.ok(e.shoot(0,power,true,origin));
   for(let i=0;i<480&&!e.over;i++)e.step(dt);
   assert.equal(e.over,false,`${id} level ${level} slot ${slot} power ${power}`);assert.ok(e.blobs[0].hasEntered);
   for(const b of e.blobs)for(const n of b.nodes)assert.ok([n.x,n.y,n.px,n.py].every(Number.isFinite));

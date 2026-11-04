@@ -93,6 +93,6 @@ Migration `0012_milestone_totals.sql` only adds tables; it resets no records.
 
 The Three-neck flask uses 120% base blob size. Conical flasks and separating
 funnels use 100%; the Original bottle stays at 150%. Each default also applies
-to the water variant. Three Combine retains its additional 30% scale.
+to the water variant. Three Combine retains its additional 20% scale.
 Achievements shows the eight individual bottle Top 5 boards; the combined
 “All bottles” tab is removed. Existing shared records are preserved.

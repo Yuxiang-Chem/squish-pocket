@@ -21,8 +21,8 @@ with sync_playwright() as p:
   page.goto(base,wait_until='domcontentloaded');assert page.locator('#mode-lab').count()==0
   assert page.locator('#achievement-tab-all').count()==0
   assert page.locator('.achievement-bottle-tabs [role=tab]').count()==8
-  defaults=page.evaluate("async()=>{const {Engine}=await import('./engine.js?v=72');return ['two','three'].flatMap(mode=>['lab-flask','lab-flask-water','conical-flask','conical-flask-water','separating-funnel','separating-funnel-water'].map(id=>({id,mode,size:new Engine(7,id,mode).physics.blobSize})));}")
-  assert all(row['size']==(120 if row['id'].startswith('lab-flask') else 100) for row in defaults)
+  defaults=page.evaluate("async()=>{const {Engine}=await import('./engine.js?v=75');return ['two','three'].flatMap(mode=>['lab-flask','lab-flask-water','conical-flask','conical-flask-water','separating-funnel','separating-funnel-water'].map(id=>({id,mode,size:new Engine(7,id,mode).physics.blobSize,scale:new Engine(7,id,mode).rules.blobScale})));}")
+  assert all(row['size']==(120 if row['id'].startswith('lab-flask') else 100) and row['scale']==(1.2 if row['mode']=='three' else 1) for row in defaults)
   page.locator('#menu-achievements').click()
   for mode,label in [('two','total 2048 blobs made'),('three','total 2,187 blobs made')]:
    page.locator('[data-achievement-mode='+mode+']').click()
