@@ -24,7 +24,7 @@ with sync_playwright() as p:
   page.route('**/api/achievements*',records)
   page.route('**/api/record-message*',lambda r:(messages.append(r.request.url),r.fulfill(status=200,json={'mergeMode':'three','ok':True})))
   page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort())
-  page.goto(base+'/?merge=two',wait_until='networkidle');page.locator('#mode-classic').click();page.locator('#classic-play').click()
+  page.goto(base+'/?merge=two',wait_until='networkidle');page.locator('#mode-classic').click();page.locator('[data-bottle=classic]').click();page.locator('#classic-play').click()
   original_url=page.url;best=page.locator('#best').inner_text();page.locator('#achievements').click()
   expect(page.locator('[data-achievement-mode=two]')).to_have_attribute('aria-pressed','true')
   page.locator('#achievement-tab-conical-flask').click();page.locator('[data-achievement-mode=three]').click()

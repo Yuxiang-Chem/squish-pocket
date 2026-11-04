@@ -1,14 +1,14 @@
-import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=57';
-import {BOTTLES} from './bottles.js?v=57';
-import {radiusFor} from './engine.js?v=57';
-import {RoomClient} from './room-client.js?v=57';
+import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=59';
+import {BOTTLES} from './bottles.js?v=59';
+import {radiusFor} from './engine.js?v=59';
+import {RoomClient} from './room-client.js?v=59';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
 const blobCaption='<span class="blob-caption" aria-hidden="true">•ᴗ•</span>';
 const setPrimaryLabel=(id,label)=>{$(id).innerHTML=`${label} ${blobCaption}`;};
 export function createStartPage(hooks){
   let rule=CURRENT_RULE;
-  let mode='classic',bottleId=hooks.initialBottle,room=null,connected=false,matchKey='',page='home',busy=false;
+  let mode='classic',bottleId=hooks.initialBottle,room=null,connected=false,matchKey='',page='home',busy=false,readyBottle=null;
   const client=new RoomClient({
     getProgress:r=>hooks.getProgress(r),
     onStatus:(state,message)=>{
@@ -38,20 +38,33 @@ export function createStartPage(hooks){
     else window.scrollTo({top:0});
   }
   function renderBottles(){
+    const start=$('classic-actions');
     for(const button of document.querySelectorAll('[data-bottle]')){
+      const ready=mode==='classic'&&readyBottle===button.dataset.bottle;
       button.setAttribute('aria-pressed',String(button.dataset.bottle===bottleId));
       button.disabled=!!room&&(!connected||room.you!==0||!['lobby','finished'].includes(room.phase));
+      button.dataset.ready=String(ready);
+      if(ready){
+        button.id='classic-play';button.setAttribute('aria-label',`Start game · ${BOTTLES[bottleId].name}`);
+        button.setAttribute('aria-describedby','classic-save-note');button.append(start);
+      }else{
+        if(button.id==='classic-play')button.removeAttribute('id');
+        button.removeAttribute('aria-label');button.removeAttribute('aria-describedby');
+      }
     }
-    const saved=hooks.classicStatus(bottleId);
-    setPrimaryLabel('classic-play',saved?`Continue ${rule.id==='three'?'Three Combine':'Classic'}`:`Play ${rule.id==='three'?'Three Combine':'Classic'}`);
-    $('classic-save-note').textContent=saved?'Your saved pile is ready. Your other bottles’ rounds stay saved too.':'Each bottle keeps its own saved round.';
+    start.classList.toggle('hidden',!readyBottle||mode!=='classic');
+    if(readyBottle){
+      start.querySelector('.bottle-start-name').textContent=BOTTLES[readyBottle].name;
+      $('classic-save-note').textContent=hooks.classicStatus(readyBottle)?'Continue your saved pile':'A fresh little pile';
+    }
   }
   function showSetup(selected){
-    mode=selected;$('menu-status').textContent='';
+    mode=selected;readyBottle=null;$('menu-status').textContent='';
+    $('mode-setup').dataset.stage='bottles';$('bottle-options').classList.remove('hidden');
     $('mode-title').textContent=mode==='classic'?'Your own little pace.':'A friendly rivalry.';
     $('mode-eyebrow').textContent=mode==='classic'?`${rule.id==='three'?'THREE COMBINE':'CLASSIC'} / JUST YOU`:'MULTIPLAYER / TWO LITTLE PILES';
-    $('mode-description').textContent=(rule.id==='three'?'Three Combine · 1 → 3 → 9 → 27. ':'')+(mode==='classic'?'Choose a bottle and make a little room.':'Pick a bottle, create a private room, and invite a friend. Or enter their code to join.');
-    $('classic-actions').classList.toggle('hidden',mode!=='classic');$('multiplayer-setup').classList.toggle('hidden',mode!=='multiplayer');
+    $('mode-description').textContent=(rule.id==='three'?'Three Combine · 1 → 3 → 9 → 27. ':'')+(mode==='classic'?'Choose a bottle, then tap Start game.':'Pick a bottle, create a private room, and invite a friend. Or enter their code to join.');
+    $('multiplayer-setup').classList.toggle('hidden',mode!=='multiplayer');
     $('room-forms').classList.toggle('hidden',!!room);$('room-lobby').classList.toggle('hidden',!room);
     $('mode-back').textContent=room?(room.phase==='playing'?'← Leave room · forfeit match':'← Leave room'):'← Choose a mode';
     renderBottles();setPage('setup');
@@ -139,10 +152,10 @@ export function createStartPage(hooks){
   $('game-home').onclick=requestHome;$('confirm-home').onclick=()=>{void confirmHome();};
   $('mode-back').onclick=()=>{if(room){void leave();return;}setPage('home');};
   $('menu-achievements').onclick=()=>$('achievements').click();
-  $('classic-play').onclick=()=>{setPage('game');hooks.enterClassic(bottleId);};
   for(const button of document.querySelectorAll('[data-bottle]'))button.onclick=()=>{
     if(room){client.send({type:'bottle',bottleId:button.dataset.bottle});return;}
-    bottleId=button.dataset.bottle;renderBottles();
+    if(mode==='classic'&&readyBottle===button.dataset.bottle){setPage('game');hooks.enterClassic(bottleId);return;}
+    bottleId=button.dataset.bottle;readyBottle=mode==='classic'?bottleId:null;renderBottles();
   };
   $('room-create').onclick=()=>run(()=>client.create($('room-name').value,bottleId,rule.id));
   $('room-join-form').onsubmit=event=>{event.preventDefault();void run(()=>client.join($('room-name').value,$('room-code-input').value));};

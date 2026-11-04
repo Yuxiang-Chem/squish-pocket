@@ -28,7 +28,7 @@ with sync_playwright() as p:
   expect(page.locator('#merge-rule-badge')).to_be_visible();saved=page.evaluate('JSON.parse(localStorage.getItem("squish-pocket-v1:three"))');assert saved['engine']['mergeMode']=='three'
   assert page.evaluate('JSON.parse(localStorage.getItem("squish-pocket-achievements-v1")).score')==4096
   result=page.evaluate('''async()=>{
-   const {Engine,blob}=await import('./engine.js?v=57');const {prepare,measure}=await import('./softbody.js?v=57');const e=new Engine(42,'classic','three');
+   const {Engine,blob}=await import('./engine.js?v=59');const {prepare,measure}=await import('./softbody.js?v=59');const e=new Engine(42,'classic','three');
    e.blobs=[145,180,215].map(x=>blob(0,x,300));for(const b of e.blobs){prepare(b,e.radius(0),1/120);measure(b,1/120);b.inBottle=true;b.hasEntered=true;for(const n of b.nodes)n.bottleSide=true;}
    for(let i=0;i<50;i++)e.step(1/120);
    localStorage.setItem('squish-pocket-v1:three',JSON.stringify({version:1,engine:e,started:true,best:e.score,sound:false}));return {score:e.score,levels:e.blobs.map(b=>b.level),mode:e.mergeMode};

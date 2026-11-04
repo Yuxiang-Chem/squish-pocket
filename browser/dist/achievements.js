@@ -1,6 +1,6 @@
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=57';
-import {BOTTLES} from './bottles.js?v=57';
-import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=57';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=59';
+import {BOTTLES} from './bottles.js?v=59';
+import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=59';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);

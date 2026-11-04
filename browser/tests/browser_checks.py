@@ -10,7 +10,7 @@ with sync_playwright() as p:
  page.screenshot(path=str(output/'phone-start.png'))
  assert page.locator('#mode-classic').is_visible() and page.locator('#mode-multiplayer').is_visible()
  page.locator('#mode-multiplayer').click();assert page.locator('#room-create').is_visible() and page.locator('#room-join').is_visible()
- page.locator('#mode-back').click();page.locator('#mode-classic').click();page.locator('#classic-play').click()
+ page.locator('#mode-back').click();page.locator('#mode-classic').click();page.locator('[data-bottle=classic]').click();page.locator('#classic-play').click()
  def slot_center(index):
   # Wait for the row to settle, then convert the ready blob's hit box to world units.
   previous=None
@@ -48,7 +48,7 @@ with sync_playwright() as p:
  page.screenshot(path=str(output/'phone-settings.png'));page.locator('#settings-dialog [data-close]').last.click()
  page.locator('#sound').click();assert page.locator('#sound').get_attribute('aria-pressed')=='false'
  page.reload(wait_until='networkidle');page.locator('#mode-classic').click()
- assert 'Continue Classic' in page.locator('#classic-play').inner_text();page.locator('#classic-play').click()
+ page.locator('[data-bottle=classic]').click();assert 'Start game' in page.locator('#classic-play').inner_text();page.locator('#classic-play').click()
  page.locator('#restart').click();page.locator('#reset-dialog [data-close]').click();assert page.locator('#overlay').is_hidden()
  page.locator('#restart').click();page.locator('#confirm-reset').click();assert page.locator('#score').inner_text()=='0'
  assert page.evaluate("JSON.parse(localStorage.getItem('squish-pocket-v1')).engine.physics")=={'stiffness':10,'viscosity':0,'blobSize':150}
@@ -61,7 +61,7 @@ with sync_playwright() as p:
   box=page.locator('#canvas').bounding_box();assert abs(box['width']/box['height']-360/420)<.008
   assert page.locator('#shoot').is_visible()
  desk=browser.new_page(viewport={'width':1440,'height':1000});desk.goto(url,wait_until='networkidle');desk.screenshot(path=str(output/'desktop-start.png'))
- desk.locator('#mode-classic').click();desk.locator('#classic-play').click();assert desk.locator('.left-notes').is_visible() and desk.locator('.right-notes').is_visible()
+ desk.locator('#mode-classic').click();desk.locator('[data-bottle=classic]').click();desk.locator('#classic-play').click();assert desk.locator('.left-notes').is_visible() and desk.locator('.right-notes').is_visible()
  assert not errors,errors
  assert min(origins)<165 and max(origins)>195,origins
  print(json.dumps({'passed':True,'origins':origins,'checks':['start page classic and multiplayer setup','20 shots from each selected slot cycling all three values','positive score','previews','pause/help/sound','settings and saves','restart','keyboard','phone and desktop layouts'],'browser_errors':errors}))

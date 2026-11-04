@@ -50,6 +50,7 @@ with sync_playwright() as p:
             }""")
             page.reload(wait_until='networkidle')
             page.locator('#mode-classic').click()
+            page.locator('[data-bottle=lab-flask]').click()
             page.locator('#classic-play').click()
             page.locator('#pause').click()
             expect(page.locator('#best')).to_have_text('0')

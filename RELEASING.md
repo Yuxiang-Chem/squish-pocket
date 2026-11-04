@@ -229,3 +229,47 @@ and saves, cross-rule room joining, both achievement/champion/message flows,
 all nine boards per rule against real public API snapshots, and widened dry
 and water conical openings. All QA writes and room sockets were mocked or
 blocked. Private backups and preservation reports remain ignored in `.releases/`.
+
+## Compact bottle start screen — 2026-11-04
+
+Test `93042a12-16b9-4eb6-b0ad-678934a22b51` (assets v58) moves solo launch
+away from the bottom of the bottle list. Choosing any bottle opens a compact
+screen with one blob and Start game; the second tap starts or continues that
+bottle's saved pile. Returning to choose another bottle does not start play
+or change the saved pile. Multiplayer choices continue to configure the room.
+
+All 218 automated checks passed. The initial app.js asset verification failed;
+`npm run verify:test` then verified the unchanged build's 30 assets and both
+achievement APIs. Local and live Chromium/WebKit verified all eight vessels in
+both merge modes, start-button visibility at 320×568 through 430×932, keyboard
+selection, saved/fresh rounds and multiplayer selection with shared writes
+mocked. This is a test-only candidate.
+
+## Start inside the bottle card — 2026-11-04
+
+Test `cbaa2890-78de-4361-96f6-b68d5bab9675` (assets v59) replaces the separate
+ready screen with an in-card start control. Selecting a bottle shows a blob,
+Start game and its saved/fresh status inside that same card. The second tap
+starts play; choosing another card moves the control there. Card dimensions,
+the bottle list, headings and scroll position stay unchanged.
+
+All 218 automated checks passed, with all 30 deployed assets and both APIs
+verified against source. Local and live Chromium/WebKit passed all eight
+vessels in both merge modes, unchanged grid/scroll, contained content at
+320–430px, keyboard selection, explicit second taps, saved/fresh starts and
+multiplayer configuration. Shared QA writes were mocked. This remains a
+test-only candidate.
+
+## Bottle-card official promotion — 2026-11-04
+
+Approved test `cbaa2890-78de-4361-96f6-b68d5bab9675` was promoted as official
+Worker `dfb8f086-23a0-4bc6-afff-10651c71811d` (assets v59), with the exact
+source fingerprint that passed 218 automated checks. All 30 official assets
+and both achievement APIs matched source. No migration was pending.
+
+Read-only pre/post snapshots confirmed every row in both modes' record,
+player, score and message tables stayed identical, along with migration
+history and zero foreign-key violations. Live Chromium/WebKit passed all
+16 vessel/mode card selections, unchanged grid/scroll, a required second tap,
+saved/fresh starts, phone layouts and multiplayer selection. Every QA write
+and room socket was mocked or blocked. Private audits remain in `.releases/`.

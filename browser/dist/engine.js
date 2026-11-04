@@ -1,14 +1,14 @@
 import {outlinesTouch} from './preparation-contact.js?v=29';
-import {ruleFor,valueFor,connectedTriples} from './merge-rules.js?v=57';
-import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=57';
+import {ruleFor,valueFor,connectedTriples} from './merge-rules.js?v=59';
+import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=59';
 import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
-import {refillRack,hasMatchingNeighbors} from './rack.js?v=57';
-import {bottleFor,isBottleId} from './bottles.js?v=57';
+import {refillRack,hasMatchingNeighbors} from './rack.js?v=59';
+import {bottleFor,isBottleId} from './bottles.js?v=59';
 import {eject} from './ejection.js?v=29';
 import {insertedOrder} from './preparation-gesture.js?v=29';
-import {createWaterState,advanceWater,waterContact} from './water.js?v=57';
-import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=57';
+import {createWaterState,advanceWater,waterContact} from './water.js?v=59';
+import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=59';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;
 export const radiusFor=(level,blobSize=150)=>13*1.2**level*blobSize/100;
 // Matching blobs fuse for MERGE_DELAY seconds before combining; the result then

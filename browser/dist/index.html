@@ -6,7 +6,7 @@
   <meta name="description" content="A pocketful of possibility. Aim, drop, and merge squishy little blobs in a relaxing physics game, made for your phone.">
   <title>Squish Pocket — a little room to play</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="apple-touch-icon" href="icon.png"><link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=57"><script type="module" src="app.js?v=57"></script>
+  <link rel="stylesheet" href="style.css?v=59"><script type="module" src="app.js?v=59"></script>
 </head>
 <body>
 <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg"><defs>
@@ -47,7 +47,7 @@
    <button class="bottle-card" data-bottle="separating-funnel-water" aria-pressed="false"><canvas width="180" height="210" aria-hidden="true"></canvas><span><strong>Separating funnel · water</strong><small>A frosted neck and a little blue tide.</small></span><i aria-hidden="true">✓</i></button>
    <button class="bottle-card" data-bottle="conical-flask-water" aria-pressed="false"><canvas width="180" height="210" aria-hidden="true"></canvas><span><strong>Conical flask · water</strong><small>A wider opening with floating little blobs.</small></span><i aria-hidden="true">✓</i></button>
   </div></div>
-  <div id="classic-actions"><button id="classic-play" class="primary">Play Classic <span class="blob-caption" aria-hidden="true">•ᴗ•</span></button><p id="classic-save-note" class="menu-footnote">Each bottle keeps its own saved round.</p></div>
+  <span id="classic-actions" class="bottle-start hidden"><span class="friend mint" aria-hidden="true">•ᴗ•</span><strong>Start game</strong><span class="bottle-start-name"></span><span id="classic-save-note" class="bottle-start-note"></span></span>
   <section id="multiplayer-setup" class="hidden">
    <div id="room-forms"><label class="menu-label" for="room-name">Your name <span>(optional)</span></label><input id="room-name" class="menu-input" maxlength="24" autocomplete="nickname" placeholder="A squishy friend">
     <button id="room-create" class="primary">Create a private room <span class="blob-caption" aria-hidden="true">•ᴗ•</span></button><div class="join-divider"><span>or join a friend</span></div>

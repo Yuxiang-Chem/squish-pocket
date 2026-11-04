@@ -18,7 +18,7 @@ with sync_playwright() as p:
   for mode in ['two','three']:
    for id in ['conical-flask','conical-flask-water']:
     page.goto(base+'/?merge='+mode,wait_until='networkidle');page.locator('#mode-classic').click();page.locator('[data-bottle="'+id+'"]').click();page.locator('#classic-play').click()
-    actual=page.evaluate('''async id=>{const {BOTTLES}=await import('./bottles.js?v=57');const g=BOTTLES[id],m=g.mouths[0];return {width:Math.abs(m.a.x-m.b.x),version:g.BOTTLE_VERSION,floor:g.BOTTLE_FLOOR,wet:!!g.water};}''',id)
+    actual=page.evaluate('''async id=>{const {BOTTLES}=await import('./bottles.js?v=59');const g=BOTTLES[id],m=g.mouths[0];return {width:Math.abs(m.a.x-m.b.x),version:g.BOTTLE_VERSION,floor:g.BOTTLE_FLOOR,wet:!!g.water};}''',id)
     assert actual=={'width':164,'version':2,'floor':408,'wet':id.endswith('-water')},actual
     expect(page.locator('#canvas')).to_have_attribute('aria-label',__import__('re').compile('Conical flask'))
     page.wait_for_timeout(1200)

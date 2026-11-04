@@ -66,3 +66,8 @@ Achievements also has its own Two Combine / Three Combine selector. It browses
 each mode's personal scores, Top 5 boards and milestone without changing the
 active round or multiplayer room. Names, champion pages and messages follow
 the displayed board's mode; reopening Achievements starts with the game mode.
+
+For solo play, tap a bottle card to show a blob and **Start game** inside that
+same card. Tap the card again to start or resume its saved pile. Choosing a
+different card moves the start control there. The bottle list and scroll
+position stay in place, and choosing alone does not change saved rounds.

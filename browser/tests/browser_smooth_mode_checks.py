@@ -21,7 +21,7 @@ with sync_playwright() as p:
   page.route('**/api/achievements*',records);page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort())
   page.goto(base+'/?merge=two',wait_until='networkidle')
   page.evaluate('''async()=>{
-   const {Engine}=await import('./engine.js?v=57');
+   const {Engine}=await import('./engine.js?v=59');
    for(const [mode,id,score,shots] of [['two','conical-flask',8,2],['three','separating-funnel-water',9,3]]){
     const engine=new Engine(17,id,mode);engine.score=score;engine.shots=shots;engine.highestLevel=1;
     const suffix=mode==='three'?':three':'';
@@ -48,7 +48,7 @@ with sync_playwright() as p:
   for mode,bottle,score,shots in [('two','conical-flask',8,2),('three','separating-funnel-water',9,3)]:
    saved=page.evaluate('(key)=>JSON.parse(localStorage.getItem(key)).engine','squish-pocket-v1'+(':three' if mode=='three' else '')+':'+bottle)
    assert (saved['mergeMode'],saved['bottleId'],saved['score'],saved['shots'])==(mode,bottle,score,shots),saved
-  page.locator('#mode-classic').click();expect(page.locator('[data-bottle=separating-funnel-water]')).to_have_attribute('aria-pressed','true');expect(page.locator('#classic-play')).to_contain_text('Continue Three Combine')
+  page.locator('#mode-classic').click();expect(page.locator('[data-bottle=separating-funnel-water]')).to_have_attribute('aria-pressed','true');page.locator('[data-bottle=separating-funnel-water]').click();expect(page.locator('#classic-play')).to_contain_text('Start game')
   page.locator('#classic-play').click();expect(page.locator('#score')).to_have_text('9');expect(page.locator('#best')).to_have_text('900');expect(page.locator('#merge-rule-badge')).to_be_visible()
   assert len(navigations)==navigation_count and page.evaluate('performance.timeOrigin')==origin
   # Joining another rule uses the existing authenticated room connection.
