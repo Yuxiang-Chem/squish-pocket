@@ -1,7 +1,8 @@
-import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=59';
-import {BOTTLES} from './bottles.js?v=59';
-import {radiusFor} from './engine.js?v=59';
-import {RoomClient} from './room-client.js?v=59';
+import {renderThreeAnnouncement,loadThreeAnnouncement} from './announcement.js?v=61';
+import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=61';
+import {BOTTLES} from './bottles.js?v=61';
+import {radiusFor} from './engine.js?v=61';
+import {RoomClient} from './room-client.js?v=61';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
 const blobCaption='<span class="blob-caption" aria-hidden="true">•ᴗ•</span>';
@@ -105,12 +106,14 @@ export function createStartPage(hooks){
     const canvas=$('opponent-canvas'),ctx=canvas.getContext('2d'),g=BOTTLES[room.bottleId];
     ctx.setTransform(2,0,0,2,0,0);ctx.clearRect(0,0,360,420);g.drawBottleBack(ctx);
     ctx.save();ctx.beginPath();g.bottleOutline.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip();
-    for(const b of other.blobs){ctx.fillStyle=colors[b.level];ctx.beginPath();ctx.ellipse(b.x,b.y,radiusFor(b.level)*1.05,radiusFor(b.level)*.95,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#424d3d';ctx.font=`700 ${Math.min(24,radiusFor(b.level)*.55)}px sans-serif`;ctx.textAlign='center';ctx.fillText(valueFor(b.level,room.mergeMode??'two'),b.x,b.y+4);}
+    for(const b of other.blobs){ctx.fillStyle=colors[b.level];ctx.beginPath();ctx.ellipse(b.x,b.y,radiusFor(b.level,150,room.mergeMode??'two')*1.05,radiusFor(b.level,150,room.mergeMode??'two')*.95,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#424d3d';ctx.font=`700 ${Math.min(24,radiusFor(b.level,150,room.mergeMode??'two')*.55)}px sans-serif`;ctx.textAlign='center';ctx.fillText(valueFor(b.level,room.mergeMode??'two'),b.x,b.y+4);}
     ctx.restore();g.drawBottleFront(ctx);$('opponent-title').textContent=`${other.name}’s bottle`;
   }
   const modeCopy=[...document.querySelectorAll('#mode-home>.menu-footnote,.left-notes>p,.menu-friends span,#mode-classic h2,#mode-classic p,#guide .guide-row p')].map(element=>({element,html:element.innerHTML}));
   function renderMergeMode(){
     for(const {element,html} of modeCopy)element.innerHTML=html;
+    renderThreeAnnouncement($('three-announcement'),rule.id,null);
+    if(rule.id==='three')void loadThreeAnnouncement().then(notice=>renderThreeAnnouncement($('three-announcement'),rule.id,notice));
     $('merge-rule-badge').classList.toggle('hidden',rule.id!=='three');
     for(const button of document.querySelectorAll('[data-merge-mode]'))button.setAttribute('aria-pressed',String(button.dataset.mergeMode===rule.id));
     if(rule.id==='three'){

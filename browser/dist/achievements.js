@@ -1,6 +1,7 @@
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=59';
-import {BOTTLES} from './bottles.js?v=59';
-import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=59';
+import {renderThreeAnnouncement} from './announcement.js?v=61';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=61';
+import {BOTTLES} from './bottles.js?v=61';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=61';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
@@ -37,6 +38,10 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
     }
   } catch { /* The game still works without storage. */ }
   profile ??= {id: crypto.randomUUID(), token: crypto.randomUUID(), name: 'A squishy friend',mergeMode:rule.id,score: 0, highestTile:rule.start, bottles: {}, recordCelebrations: {}};
+  if(rule.id==='three'&&profile.achievementEpoch!==THREE_RECORD_EPOCH){
+    profile.score=0;profile.highestTile=1;profile.bottles={};profile.recordCelebrations={};delete profile.flaskRecord;
+  }
+  profile.achievementEpoch=achievementEpochFor(rule.id);
   if(profile.flaskRecord?.epoch!==FLASK_RECORD_EPOCH||!validRecord(profile.flaskRecord,rule.id)){
     delete profile.flaskRecord;delete profile.recordCelebrations['lab-flask'];
     if(profile.bottles['lab-flask'])profile.bottles['lab-flask'].score=0;
@@ -48,7 +53,7 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
     try {
       const saved = JSON.parse(storage.getItem(saveKeyFor(id,rule.id)));
       const engine = saved?.engine;
-      if (saved?.version !== 1 || (engine?.bottleId ?? 'classic') !== id || (engine?.mergeMode??'two')!==rule.id) continue;
+      if (saved?.version !== 1 || (engine?.bottleId ?? 'classic') !== id || (engine?.mergeMode??'two')!==rule.id || !recordEligible(engine)) continue;
       const levels = [...(engine.blobs ?? []), ...(engine.rack ?? [])].map(b => b.level).filter(n => Number.isInteger(n) && n >= 0 && n <= 11);
       const highestTile = valueFor(Math.max(0,engine.highestLevel??0,...levels),rule.id);
       const eligible=id!=='lab-flask'||engine.recordEpoch===FLASK_RECORD_EPOCH;
@@ -61,7 +66,7 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
 }
 
 export function captureProgress(profile, engine, personalBest = engine.score) {
-  if((profile.mergeMode??'two')!==(engine.mergeMode??'two'))return false;
+  if((profile.mergeMode??'two')!==(engine.mergeMode??'two')||!recordEligible(engine))return false;
   const score = Math.max(profile.score, engine.score, personalBest);
   const highestTile = Math.max(profile.highestTile, valueFor(engine.highestLevel,engine.mergeMode??'two'));
   const previous = profile.bottles?.[engine.bottleId];
@@ -79,7 +84,7 @@ export function roundRecords(profile, summary, engine) {
   const shared = summary?.bottles?.[engine.bottleId];
   const personal=engine.bottleId==='lab-flask'&&shared?.recordEpoch!==undefined&&shared.recordEpoch!==FLASK_RECORD_EPOCH?0:shared?.personal?.score??0;
   return {
-    personalBest: Math.max(engine.bottleId==='lab-flask'&&engine.recordEpoch!==FLASK_RECORD_EPOCH?0:engine.score, profile.bottles?.[engine.bottleId]?.score ?? 0, personal),
+    personalBest: Math.max(!recordEligible(engine)?0:engine.bottleId==='lab-flask'&&engine.recordEpoch!==FLASK_RECORD_EPOCH?0:engine.score, profile.bottles?.[engine.bottleId]?.score ?? 0, personal),
     worldBest: shared ? shared.record?.score ?? 0 : null
   };
 }
@@ -120,11 +125,12 @@ export class Achievements {
   async request(path, data) {
     const response = await fetch(path+(this.rule.id==='three'?'?merge=three':''), {method: 'POST', headers: {
       'Content-Type': 'application/json', 'X-Player-Id': this.profile.id, 'Authorization': `Bearer ${this.profile.token}`
-    }, body: JSON.stringify(data), signal: AbortSignal.timeout(12000), keepalive: true});
+    }, body: JSON.stringify({...data,...(this.rule.id==='three'?{achievementEpoch:THREE_RECORD_EPOCH}:{})}), signal: AbortSignal.timeout(12000), keepalive: true});
     let result;
     try { result = await response.json(); } catch { throw new Error('Shared achievements are unavailable. Your progress stays in this browser.'); }
     if (!response.ok) throw new Error(result.error || 'Please try again in a moment.');
     if((result.mergeMode??'two')!==this.rule.id)throw new Error('This board belongs to another merge mode. Please refresh.');
+    if(this.rule.id==='three'&&result.achievementEpoch!==THREE_RECORD_EPOCH)throw new Error('Three Combine achievements restarted. Please refresh to join the new board.');
     return result;
   }
   async sync(force = false) {
@@ -358,9 +364,10 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     const p = viewTracker.profile, s = viewTracker.summary, rule=viewTracker.rule, milestone=rule.id==='three'?'2,187':'2048';
     for(const id of pageIds)pages.querySelector(`[data-leaderboard="${id}"]`).setAttribute('aria-label',`${rule.name} · ${id==='all'?'All bottles':BOTTLES[id].name} top five scores`);
     dialog.querySelectorAll('[data-achievement-mode]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.achievementMode===rule.id));button.disabled=sending;});
+    renderThreeAnnouncement($('achievement-season-note'),rule.id,s?.announcement);
     dialog.querySelector('.achievement-badge').textContent=String(rule.milestone);
     dialog.querySelector('.achievement-intro').textContent=rule.name+' · Every '+milestone+' starts with a tiny '+(rule.id==='three'?'one.':'two.');
-    dialog.querySelector('.achievement-footnote').textContent=rule.name+' keeps its own name, best scores and saved rounds in this browser. Reaching '+milestone+' in the bottle or ready row counts once across rounds. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.';
+    dialog.querySelector('.achievement-footnote').textContent=rule.name+' keeps its own name, best scores and saved rounds in this browser. Reaching '+milestone+' in the bottle or ready row counts once across rounds. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.'+(rule.id==='three'?' Only fresh rounds started after the restart count toward these achievements.':'');
     $('achievement-personal-tile').textContent = p.highestTile.toLocaleString();
     $('achievement-personal-score').textContent = p.score.toLocaleString();
     $('achievement-milestone').textContent = p.highestTile >= rule.milestone ? `${milestone} club · you made it!` : `Your next little milestone: ${milestone}`;

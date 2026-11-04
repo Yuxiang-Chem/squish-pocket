@@ -62,6 +62,17 @@ Three Combine uses `?merge=three`, separate browser save/profile keys and
 separate shared scoreboards. Existing Two Combine records stay in their
 original keys and tables. Publish candidates to the test site first.
 
+Three Combine blobs use a 1.3 size multiplier for ready bodies, bottle physics
+and the opponent preview. Older Three Combine saves resize once while retaining
+scores, shot counts and merge progress; Two Combine keeps its original size.
+
+The Three Combine restart clears personal achievements and shared
+boards for every vessel, while retaining names, identities and archived old
+records. Pre-restart piles remain playable with their round score, but only
+fresh rounds count toward restarted achievements. Two Combine records retain
+their history. The thank-you announcement for zzz's 65,610 score expires
+automatically 48 hours after each site's release migration is applied.
+
 Achievements also has its own Two Combine / Three Combine selector. It browses
 each mode's personal scores, Top 5 boards and milestone without changing the
 active round or multiplayer room. Names, champion pages and messages follow

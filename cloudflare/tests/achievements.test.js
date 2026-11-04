@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import worker from '../api.js';
 
 // Execute the actual parameterized statements against SQLite, D1's SQL engine.
-function setup({beforeReset=false,beforeThree=false} = {}) {
+function setup({beforeReset=false,beforeThree=false,beforeFresh=false} = {}) {
   const sql = new DatabaseSync(':memory:');
   sql.exec(readFileSync(new URL('../migrations/0001_achievements.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0002_bottle_records.sql', import.meta.url), 'utf8'));
@@ -17,6 +17,7 @@ function setup({beforeReset=false,beforeThree=false} = {}) {
   if(!beforeReset)sql.exec(readFileSync(new URL('../migrations/0008_laboratory_vessels.sql', import.meta.url), 'utf8'));
   if(!beforeReset)sql.exec(readFileSync(new URL('../migrations/0009_laboratory_water_vessels.sql', import.meta.url), 'utf8'));
   if(!beforeThree)sql.exec(readFileSync(new URL('../migrations/0010_three_combine.sql', import.meta.url), 'utf8'));
+  if(!beforeThree&&!beforeFresh)sql.exec(readFileSync(new URL('../migrations/0011_three_combine_fresh_achievements.sql',import.meta.url),'utf8'));
   const db = {prepare(query) {
     return {values: [], bind(...values) { this.values = values; return this; },
       async run() { const result = sql.prepare(query).run(...this.values); return {meta: {changes: result.changes}}; },
@@ -29,6 +30,7 @@ function setup({beforeReset=false,beforeThree=false} = {}) {
     EMAIL: {async send(message) { emails.push(message); return {messageId: crypto.randomUUID()}; }}};
   const player = () => ({id: crypto.randomUUID(), token: crypto.randomUUID()});
   async function request(path, data, identity, extraHeaders = {}) {
+    if(data&&path.includes('merge=three')&&data.achievementEpoch===undefined)data={...data,achievementEpoch:2};
     const response = await worker.fetch(new Request(`https://game.example${path}`, {
       method: data ? 'POST' : 'GET', headers: {'Content-Type': 'application/json',
         ...(identity ? {'X-Player-Id': identity.id, Authorization: `Bearer ${identity.token}`} : {}), ...extraHeaders},
@@ -386,7 +388,29 @@ test('adding Three Combine leaves every original identity, best and holder intac
  await t.request('/api/achievements',{name:'Keep my original record',score:4096,highestTile:2048,bottles:{classic:{score:4096,highestTile:2048}}},a);
  const tables=['players','world_record','bottle_scores','bottle_records','record_messages','bottle_messages','flask_current_scores'];
  const rows=()=>Object.fromEntries(tables.map(table=>[table,t.sql.prepare('SELECT * FROM '+table+' ORDER BY 1,2').all()]));
- const before=rows();t.sql.exec('BEGIN;'+readFileSync(new URL('../migrations/0010_three_combine.sql',import.meta.url),'utf8')+'COMMIT;');assert.deepEqual(rows(),before);
+ const before=rows();t.sql.exec('BEGIN;'+readFileSync(new URL('../migrations/0010_three_combine.sql',import.meta.url),'utf8')+readFileSync(new URL('../migrations/0011_three_combine_fresh_achievements.sql',import.meta.url),'utf8')+'COMMIT;');assert.deepEqual(rows(),before);
  assert.equal((await t.request('/api/achievements')).data.record.score,4096);assert.equal((await t.request('/api/achievements?merge=three')).data.record,null);
  assert.deepEqual(t.sql.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+
+test('Three Combine fresh boards preserve Two records and archived zzz records while rejecting stale clients',async()=>{
+ const t=setup({beforeFresh:true}),a=t.player();await t.submit(a,4096,2048,'Two champion');
+ const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(a.token))),n=>n.toString(16).padStart(2,'0')).join('');
+ t.sql.prepare('INSERT INTO three_players (id,token_hash,name,best_score,highest_tile,best_at,created_at) VALUES (?,?,?,?,?,?,?)').run(a.id,hash,'zzz',65610,6561,1,1);
+ for(const bottle of ['classic','lab-flask','classic-water','lab-flask-water','separating-funnel','conical-flask','separating-funnel-water','conical-flask-water'])t.sql.prepare('INSERT INTO three_bottle_scores VALUES (?,?,?,?,?)').run(a.id,bottle,65610,6561,1);
+ t.sql.prepare('INSERT INTO three_flask_current_scores VALUES (?,?,?,?)').run(a.id,65610,6561,1);
+ const tables=['players','world_record','bottle_scores','bottle_records','flask_current_scores','record_messages','bottle_messages',...['players','world_record','bottle_scores','bottle_records','flask_current_scores','record_messages','bottle_messages'].map(t=>'three_'+t)];
+ const rows=()=>Object.fromEntries(tables.map(table=>[table,t.sql.prepare('SELECT * FROM '+table+' ORDER BY 1,2').all()]));const before=rows();
+ t.sql.exec('BEGIN;'+readFileSync(new URL('../migrations/0011_three_combine_fresh_achievements.sql',import.meta.url),'utf8')+'COMMIT;');assert.deepEqual(rows(),before);
+ let result=(await t.request('/api/achievements?merge=three')).data;assert.equal(result.announcement.expiresAt-result.announcement.publishedAt,172800000);assert.equal(result.achievementEpoch,2);assert.equal(result.record,null);assert.equal(result.reachedMilestone,0);assert.equal(result.highestTile,1);
+ for(const b of Object.values(result.bottles)){assert.equal(b.record,null);assert.deepEqual(b.leaderboard,[]);}
+ assert.equal(t.sql.prepare('SELECT name FROM three_v2_players WHERE id=?').get(a.id).name,'zzz');
+ assert.equal((await t.request('/api/achievements')).data.record.score,4096);
+ const old={name:'zzz',score:65610,highestTile:6561,bottles:{classic:{score:65610,highestTile:6561}}};
+ const stale=await worker.fetch(new Request('https://game.example/api/achievements?merge=three',{method:'POST',headers:{'Content-Type':'application/json','X-Player-Id':a.id,Authorization:'Bearer '+a.token},body:JSON.stringify(old)}),t.env);assert.equal(stale.status,409);
+ assert.equal((await t.request('/api/achievements?merge=three',{...old,achievementEpoch:1},a)).status,409);
+ assert.equal((await t.request('/api/record-message?merge=three',{message:'old record',achievementEpoch:1},a)).status,409);
+ result=await t.request('/api/achievements?merge=three',{name:'zzz',score:9,highestTile:9,bottles:{classic:{score:9,highestTile:9}}},a);assert.equal(result.status,200);assert.equal(result.data.record.score,9);
+ assert.equal((await t.request('/api/achievements?merge=three',{name:'Hijack',score:27,highestTile:27},{id:a.id,token:crypto.randomUUID()})).status,403);
+ assert.deepEqual(rows(),before);assert.deepEqual(t.sql.prepare('PRAGMA foreign_key_check').all(),[]);
 });

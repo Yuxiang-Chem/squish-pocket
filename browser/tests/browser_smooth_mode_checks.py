@@ -11,17 +11,17 @@ with sync_playwright() as p:
   browser=getattr(p,name).launch();page=browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)
   errors=[];navigations=[];requests=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('request',lambda r:navigations.append(r.url) if r.is_navigation_request() and r.resource_type=='document' else None)
   for mode,score,tile,bottle in [('two',4096,2048,'conical-flask'),('three',900,729,'separating-funnel-water')]:
-   profile={'id':str(uuid.uuid4()),'token':str(uuid.uuid4()),'mergeMode':mode,'name':mode+' friend','score':score,'highestTile':tile,'flaskRecord':{'epoch':2,'score':0,'highestTile':1 if mode=='three' else 2},'bottles':{bottle:{'score':score,'highestTile':tile}}}
+   profile={'id':str(uuid.uuid4()),'token':str(uuid.uuid4()),'mergeMode':mode,'achievementEpoch':2 if mode=='three' else 1,'name':mode+' friend','score':score,'highestTile':tile,'flaskRecord':{'epoch':2,'score':0,'highestTile':1 if mode=='three' else 2},'bottles':{bottle:{'score':score,'highestTile':tile}}}
    key='squish-pocket-achievements-v1'+(':three' if mode=='three' else '')
    page.add_init_script('if(!localStorage.getItem('+json.dumps(key)+'))localStorage.setItem('+json.dumps(key)+','+json.dumps(json.dumps(profile))+');')
   def records(route):
    mode=parse_qs(urlparse(route.request.url).query).get('merge',['two'])[0];body=route.request.post_data_json or {};requests.append((mode,body))
    board={'record':None,'leaderboard':[],'highestTile':1 if mode=='three' else 2,'isRecordHolder':False}
-   route.fulfill(status=200,json={**board,'mergeMode':mode,'milestone':2187 if mode=='three' else 2048,'reachedMilestone':0,'emailReady':False,'bottles':{id:{**board,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}})
+   route.fulfill(status=200,json={**board,'mergeMode':mode,'achievementEpoch':2 if mode=='three' else 1,'milestone':2187 if mode=='three' else 2048,'reachedMilestone':0,'emailReady':False,'bottles':{id:{**board,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}})
   page.route('**/api/achievements*',records);page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort())
   page.goto(base+'/?merge=two',wait_until='networkidle')
   page.evaluate('''async()=>{
-   const {Engine}=await import('./engine.js?v=59');
+   const {Engine}=await import('./engine.js?v=61');
    for(const [mode,id,score,shots] of [['two','conical-flask',8,2],['three','separating-funnel-water',9,3]]){
     const engine=new Engine(17,id,mode);engine.score=score;engine.shots=shots;engine.highestLevel=1;
     const suffix=mode==='three'?':three':'';

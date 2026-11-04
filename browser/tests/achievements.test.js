@@ -12,7 +12,7 @@ test('concurrent achievement modes keep identities, requests, milestones and sto
   }
   t.mock.method(globalThis,'fetch',async(path,options)=>{
     sent.push({path,id:options.headers['X-Player-Id'],...JSON.parse(options.body)});
-    return Response.json({mergeMode:path.includes('merge=three')?'three':'two',bottles:{}});
+    return Response.json({mergeMode:path.includes('merge=three')?'three':'two',achievementEpoch:2,bottles:{}});
   });
   let twoMilestones=0,threeMilestones=0;
   const two=new Achievements({mergeMode:'two',canCelebrate:()=>false,onMilestone:()=>twoMilestones++});
@@ -281,4 +281,21 @@ test('anonymous board names use an empty optional editor without changing named 
   const {boardName}=await import('../dist/achievements.js');
   assert.equal(boardName('A squishy friend'),'');assert.equal(boardName(''),'');assert.equal(boardName(undefined),'');
   assert.equal(boardName('  Ada  '),'Ada');
+});
+
+test('Three Combine restart clears every personal board once and excludes old saved rounds',()=>{
+ const values=new Map(),id=crypto.randomUUID(),token=crypto.randomUUID(),ids=['classic','lab-flask','classic-water','lab-flask-water','separating-funnel','conical-flask','separating-funnel-water','conical-flask-water'];
+ const old={id,token,name:'zzz',mergeMode:'three',score:65610,highestTile:6561,bottles:Object.fromEntries(ids.map(id=>[id,{score:65610,highestTile:6561}])),flaskRecord:{epoch:2,score:65610,highestTile:6561},recordCelebrations:{classic:65610}};
+ values.set('squish-pocket-achievements-v1:three',JSON.stringify(old));
+ const rounds=ids.map(id=>{const e=new Engine(42,id,'three');delete e.achievementEpoch;e.score=65610;e.highestLevel=8;e.shots=200;values.set('squish-pocket-v1:three'+(id==='classic'?'':':'+id),JSON.stringify({version:1,engine:e,started:true,best:65610}));return e;});
+ const storage={getItem:k=>values.get(k)},fresh=loadProfile(storage,'three');
+ assert.equal(fresh.id,id);assert.equal(fresh.token,token);assert.equal(fresh.name,'zzz');assert.equal(fresh.achievementEpoch,2);assert.equal(fresh.score,0);assert.equal(fresh.highestTile,1);assert.deepEqual(fresh.bottles,{});assert.deepEqual(fresh.recordCelebrations,{});
+ for(const old of rounds){
+  const resumed=Engine.restore(JSON.parse(JSON.stringify(old)));assert.equal(resumed.achievementEpoch,1);assert.equal(resumed.score,65610);assert.equal(resumed.shots,200);
+  assert.equal(captureProgress(fresh,resumed,65610),false);assert.equal(roundRecords(fresh,null,resumed).personalBest,0);
+ }
+ const current=new Engine(42,'classic','three');current.score=9;current.highestLevel=2;assert.ok(captureProgress(fresh,current,0));assert.equal(fresh.score,9);
+ values.set('squish-pocket-achievements-v1:three',JSON.stringify(fresh));assert.equal(loadProfile(storage,'three').score,9);
+ values.set('squish-pocket-achievements-v1',JSON.stringify({...old,mergeMode:'two',score:4096,highestTile:2048,bottles:{classic:{score:4096,highestTile:2048}},flaskRecord:{epoch:2,score:0,highestTile:2}}));
+ assert.equal(loadProfile(storage,'two').score,4096);
 });

@@ -1,10 +1,11 @@
-import {bottleFor} from './bottles.js?v=59';
-import {prepare,measure,membrane,overlap,contact,separateBodies} from './softbody.js?v=59';
+import {ruleFor} from './merge-rules.js?v=61';
+import {bottleFor} from './bottles.js?v=61';
+import {prepare,measure,membrane,overlap,contact,separateBodies} from './softbody.js?v=61';
 import {materialFor,normalizePhysics} from './physics-settings.js?v=29';
-import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=59';
+import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=61';
 import {eject} from './ejection.js?v=29';
 import {outlinesTouch,renderedOutline} from './preparation-contact.js?v=29';
-import {MAX_LEVEL} from './engine.js?v=59';
+import {MAX_LEVEL} from './engine.js?v=61';
 import {insertedOrder} from './preparation-gesture.js?v=29';
 export {trayRadius};
 export const RACK_Y=HOLE.y;
@@ -32,8 +33,10 @@ export class RackMotion{
     this.held=null;this.order=[];this.contactPairs=[];this.activeDrags=new Set();this.contactEvents=[];this.settleTimes=new Map();this.mergeBursts=[];this.setPhysics();this.stats={contacts:0,impacts:[],maxDeformation:0};
   }
   setBottle(id){this.vessel=bottleFor(id);}
-  setPhysics(settings){
-    const previous=this.physics?.blobSize??150;this.physics=normalizePhysics(settings);this.material=materialFor(this.physics);
+  setPhysics(settings,mergeMode='two'){
+    const previous=this.physics?.blobSize??150;this.physics=normalizePhysics(settings);
+    // Preparation uses the same mode multiplier as the physical bottle blobs.
+    this.physics.blobSize*=ruleFor(mergeMode).blobScale;this.material=materialFor(this.physics);
     if(previous!==this.physics.blobSize){
     for(const item of this.visual.values()){
       const body=item.body,newRadius=trayRadius(item.level,this.physics.blobSize),ratio=newRadius/body.renderRadius;body.renderRadius=newRadius;

@@ -13,11 +13,11 @@ with sync_playwright() as p:
   errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   def records(route):
    mode=parse_qs(urlparse(route.request.url).query).get('merge',['two'])[0];board={'record':None,'leaderboard':[],'highestTile':1 if mode=='three' else 2,'isRecordHolder':False}
-   route.fulfill(status=200,json={**board,'mergeMode':mode,'milestone':2187 if mode=='three' else 2048,'reachedMilestone':0,'emailReady':False,'bottles':{id:{**board,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}})
+   route.fulfill(status=200,json={**board,'mergeMode':mode,'achievementEpoch':2 if mode=='three' else 1,'milestone':2187 if mode=='three' else 2048,'reachedMilestone':0,'emailReady':False,'bottles':{id:{**board,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}})
   page.route('**/api/**',lambda r:r.abort());page.route('**/api/achievements*',records)
   page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort())
   page.goto(base+'/?merge=two',wait_until='networkidle')
-  page.evaluate('''async()=>{const {Engine}=await import('./engine.js?v=59');for(const mode of ['two','three']){const engine=new Engine(42,'classic-water',mode);engine.score=mode==='three'?9:12;engine.shots=3;engine.highestLevel=1;localStorage.setItem('squish-pocket-v1'+(mode==='three'?':three':'')+':classic-water',JSON.stringify({version:1,engine,started:true,best:engine.score,sound:false}));}}''')
+  page.evaluate('''async()=>{const {Engine}=await import('./engine.js?v=61');for(const mode of ['two','three']){const engine=new Engine(42,'classic-water',mode);engine.score=mode==='three'?9:12;engine.shots=3;engine.highestLevel=1;localStorage.setItem('squish-pocket-v1'+(mode==='three'?':three':'')+':classic-water',JSON.stringify({version:1,engine,started:true,best:engine.score,sound:false}));}}''')
   for mode in ['two','three']:
    page.locator('[data-merge-mode='+mode+']').click();page.locator('#mode-classic').click()
    expect(page.locator('#classic-play')).to_be_hidden()

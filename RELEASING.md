@@ -273,3 +273,52 @@ history and zero foreign-key violations. Live Chromium/WebKit passed all
 16 vessel/mode card selections, unchanged grid/scroll, a required second tap,
 saved/fresh starts, phone layouts and multiplayer selection. Every QA write
 and room socket was mocked or blocked. Private audits remain in `.releases/`.
+
+## Three Combine size increase — 2026-11-04
+
+Test `931b572d-bf3b-41cd-b510-58bf931d7d06` (assets v60) makes Three Combine
+blobs 30% larger in linear size. Physical membranes, ready bodies and opponent
+previews use the same multiplier. Older saves resize once and fit to the glass,
+preserving score, shots and merge progress. Two Combine sizing is unchanged.
+
+All 183 game, 33 backend/release and 5 Worker runtime checks passed (221 total).
+All 30 deployed assets and both mode APIs matched source. Local/live
+Chromium/WebKit verified real shooting, ready/physical size ratios, old-save
+upgrades and repeated reloads, preserved scores/shots and phone layouts with
+shared writes mocked. Entry checks passed every spawned value, slot and force
+across all eight vessels. No migration was required; this is a test candidate.
+
+## Three Combine restart and two-day announcement — 2026-11-04
+
+Approved test `be4bc363-a27a-4075-9805-5ff798c1392c` (assets v61) was promoted
+to official Worker `3129833e-f16c-4c2e-89e6-ce1b438fb701`. Its exact source
+passed 225 automated checks (186 game, 34 backend/release, 5 Worker runtime).
+All 31 assets and both achievement APIs matched source. Initial test asset
+verification was retried successfully with `npm run verify:test` on the
+unchanged build.
+
+Three Combine blobs are 30% larger. Migration 0011 restarts personal, vessel,
+overall and milestone achievements in separate `three_v2_` tables, copying
+identities/names with zero progress. Old saved piles stay playable but cannot
+refill the reset boards; epoch-less clients cannot submit old achievements.
+Two Combine retains its existing rules and records.
+
+The official database was privately backed up, and migration 0011 was rehearsed
+on that backup. Full pre/post exports verified exact preservation of every
+original table row, including all 29 Two Combine players, 75 bottle scores,
+record holders/messages and the archived Three Combine history with zzz's
+65,610 score. Four Three Combine identities were copied with zero score and
+starting tile 1, and all fresh leaderboards were empty. Foreign-key and SQLite
+integrity checks passed.
+
+The thank-you announcement runs from 2026-11-04 18:42:12 to 2026-11-06 18:42:12
+Asia/Shanghai (48 hours). Test and official windows start independently when
+their migration is applied. Page timers hide both home and achievement notices
+automatically, including pages left open.
+
+Local, test-site and official Chromium/WebKit checks passed notice content,
+two-day expiry, personal/Top 5 reset, stale-save exclusion, Two Combine score
+retention, larger ready/physical blobs, shooting and repeated save restoration.
+All QA writes and room sockets were mocked or blocked. Private exports and
+reports remain ignored inside `.releases/`. The earlier review-service usage
+limit interruption was resolved before these release checks and publication.

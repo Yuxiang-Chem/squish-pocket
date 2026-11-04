@@ -1,16 +1,17 @@
-import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=59';
-import {createStartPage} from './start-page.js?v=59';
-import {Engine,blob,radiusFor,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=59';
+import {recordEligible,recordScore} from './record-epoch.js?v=61';
+import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=61';
+import {createStartPage} from './start-page.js?v=61';
+import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=61';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
-import {RackMotion} from './rack-motion.js?v=59';
-import {isBottleId} from './bottles.js?v=59';
+import {RackMotion} from './rack-motion.js?v=61';
+import {isBottleId} from './bottles.js?v=61';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=59';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=61';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
-import {connectAchievements} from './achievements.js?v=59';
+import {connectAchievements} from './achievements.js?v=61';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
@@ -42,16 +43,16 @@ function restoreBottle(id,restoreSound=false){
     if(data?.version===1){
       const restored=Engine.restore(data.engine);
       if(restored?.bottleId===id&&restored.mergeMode===activeRule.id){engine=restored;engine.setPhysics(playerPhysics());started=data.started===true;paused=started;}
-      if(Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
+      if(recordEligible(engine)&&Number.isSafeInteger(data.best)&&data.best>=0)best=Math.max(best,data.best);
       if(restoreSound&&typeof data.sound==='boolean')sound=data.sound;
     }
   }catch{/* A missing or unavailable save starts a new bottle. */}
 }
 let selectedBottle=savedBottle();
 restoreBottle(selectedBottle,true);
-best=Math.max(best,engine.score);
+best=Math.max(best,recordScore(engine));
 highestSeen=Math.max(0,...engine.blobs.map(b=>b.level));
-rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
+rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics,engine.mergeMode);rackMotion.reset(engine.rackOrder());
 const achievements=connectAchievements({getEngine:()=>engine,getBest:()=>best,
   canCelebrate:()=>!started||(engine.over&&endedShown)||(gameMode==='multiplayer'&&activeRoom?.phase==='finished'),cancelAim,toast});
 best=Math.max(best,achievements.profile.score);
@@ -129,10 +130,10 @@ function showMatchOverlay(){
   showOverlay({kicker:'YOUR ROUND IS COMPLETE',title:engine.endReason==='spill'?'A little spill.':'A lovely little pile.',description:'Your score is saved for this match. Check your friend’s progress in the room.',button:'View match',action:()=>shell.showRoom(),friends:true,stats:true});
 }
 function finish(){
-  if(endedShown)return;endedShown=true;cancelAim();best=Math.max(best,engine.score);save();updateHUD();
+  if(endedShown)return;endedShown=true;cancelAim();best=Math.max(best,recordScore(engine));save();updateHUD();
   if(gameMode==='multiplayer'){shell.publish();showMatchOverlay();return;}
   const spilled=engine.endReason==='spill';
-  showOverlay({kicker:spilled?'OUTSIDE THE BOTTLE':engine.score>0&&engine.score>=achievements.roundRecords().personalBest?'A NEW PERSONAL BEST':'A LOVELY LITTLE PILE',title:spilled?'A little spill.':'Full of feelings.',description:spilled?'Game over — a blob fell outside the bottle.':`${engine.shots} little drops`,button:'One more round',action:newGame,footnote:'THERE’S ALWAYS ROOM FOR A FRESH START.',friends:true,stats:true});
+  showOverlay({kicker:spilled?'OUTSIDE THE BOTTLE':recordEligible(engine)&&engine.score>0&&engine.score>=achievements.roundRecords().personalBest?'A NEW PERSONAL BEST':'A LOVELY LITTLE PILE',title:spilled?'A little spill.':'Full of feelings.',description:spilled?'Game over — a blob fell outside the bottle.':`${engine.shots} little drops`,button:'One more round',action:newGame,footnote:'THERE’S ALWAYS ROOM FOR A FRESH START.',friends:true,stats:true});
 }
 // Shots leave from wherever the selected ready blob currently is.
 function launchPoint(){
@@ -394,7 +395,7 @@ renderEvolution();
 function drawBlob(b,alpha=1,paint=ctx,glow=0){
   const ctx=paint;
   ctx.save();ctx.globalAlpha=alpha;
-  const r=b.renderRadius??radiusFor(b.level),points=b.nodes?b.nodes.map(p=>[p.x,p.y]):b.shape.map((offset,k)=>{const a=k/24*Math.PI*2;return [b.x+Math.cos(a)*r*(1+offset),b.y+Math.sin(a)*r*(1+offset)];});
+  const r=b.renderRadius??engine.radius(b.level),points=b.nodes?b.nodes.map(p=>[p.x,p.y]):b.shape.map((offset,k)=>{const a=k/24*Math.PI*2;return [b.x+Math.cos(a)*r*(1+offset),b.y+Math.sin(a)*r*(1+offset)];});
   ctx.beginPath();ctx.moveTo((points[23][0]+points[0][0])/2,(points[23][1]+points[0][1])/2);
   points.forEach((p,k)=>{const next=points[(k+1)%24];ctx.quadraticCurveTo(p[0],p[1],(p[0]+next[0])/2,(p[1]+next[1])/2);});
   ctx.closePath();
@@ -548,7 +549,7 @@ function frame(now){
         if(!reducedMotion)for(let k=0;k<10;k++){const angle=k*Math.PI/5;particles.push({x:b.x,y:b.y,vx:Math.cos(angle)*90,vy:Math.sin(angle)*90-40,life:.6,level:b.level});}
         if(b.level>highestSeen){highestSeen=b.level;if(b.level===MAX_LEVEL)toast(`${engine.value(MAX_LEVEL).toLocaleString()}! A pocketful of possibility.`);}
       }
-      if(events.length){best=Math.max(best,engine.score);achievements.observe(engine,best);updateHUD();}
+      if(events.length){best=Math.max(best,recordScore(engine));achievements.observe(engine,best);updateHUD();}
       if(engine.over){if(engine.endReason==='spill'){cancelAim();updateHUD();save();}else finish();break;}
     }
     for(const p of particles){p.life-=elapsed;p.x+=p.vx*elapsed;p.y+=p.vy*elapsed;p.vy+=150*elapsed;}
@@ -557,7 +558,7 @@ function frame(now){
   }else accumulator=0;
   if(engine.over&&engine.endReason==='spill'&&!endedShown){engine.animateSpill(elapsed);spillReveal+=elapsed;if(spillReveal>=.7)finish();}
   const moving=rackMotion.busy;
-  if(playable()){dragMotion.update(elapsed);rackMotion.setHeldPose({sx:1,sy:1,tilt:0});rackMotion.setPhysics(engine.physics);rackMotion.update(elapsed);resolvePreparationContacts();
+  if(playable()){dragMotion.update(elapsed);rackMotion.setHeldPose({sx:1,sy:1,tilt:0});rackMotion.setPhysics(engine.physics,engine.mergeMode);rackMotion.update(elapsed);resolvePreparationContacts();
     for(const burst of rackMotion.takeMergeBursts())if(!reducedMotion)spawnRackBurst(burst);
     updateRackBursts(elapsed);
   }
@@ -576,7 +577,7 @@ function showSavedState(){
 }
 function resetVisuals(){
   endedShown=false;spillReveal=0;highestSeen=engine.highestLevel;particles=[];rackRings=[];rackSparks=[];accumulator=0;aimAngle=0;
-  rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics);rackMotion.reset(engine.rackOrder());
+  rackMotion.setBottle(engine.bottleId);rackMotion.setPhysics(engine.physics,engine.mergeMode);rackMotion.reset(engine.rackOrder());
 }
 function abandonRound(){
   cancelAim();
@@ -591,10 +592,11 @@ function abandonRound(){
 }
 function enterClassic(id){
   cancelAim();if(gameMode==='classic')save();gameMode='classic';activeRoom=null;currentMatchKey='';restoreBottle(id);
-  best=Math.max(best,engine.score,achievements.profile.score);resetVisuals();
+  best=Math.max(best,recordScore(engine),achievements.profile.score);resetVisuals();
   try{localStorage.setItem(selectedBottleKey(),id);}catch{}
   if(!started||engine.over)newGame();else resume();
   updateHUD();save();
+  if(!recordEligible(engine))toast('Old saved pile · start a fresh round for the new Three Combine boards.');
 }
 function enterMatch(room,connected){
   const key=`${room.code}:${room.round}`;
@@ -620,7 +622,7 @@ function updateMatch(room,connected){
   activeRoom=room;roomConnected=connected;
   if(gameMode!=='multiplayer'||currentMatchKey!==`${room.code}:${room.round}`)return;
   if(room.phase==='finished'&&page==='game'){
-    paused=true;cancelAim();best=Math.max(best,room.players[room.you].score);save();
+    paused=true;cancelAim();best=Math.max(best,recordEligible(engine)?room.players[room.you].score:0);save();
     const key=`${room.code}:${room.round}`;
     if(shownResult!==key){shownResult=key;showOverlay({kicker:'MATCH COMPLETE',title:'A lovely little match.',description:shell.resultTitle(room),button:'Back to the room',action:()=>shell.showRoom(),friends:true,stats:true});}
   }
@@ -633,7 +635,7 @@ function switchMergeMode(mode){
   currentMatchKey='';shownResult='';roomConnected=false;
   restoreBottle(savedBottle());
   achievements.setMode(activeRule.id);
-  best=Math.max(best,engine.score,achievements.profile.score);
+  best=Math.max(best,recordScore(engine),achievements.profile.score);
   previewEngine=null;overlay.classList.add('hidden');resetVisuals();renderEvolution();updateHUD();
   return {bottleId:engine.bottleId,profile:achievements.profile};
 }

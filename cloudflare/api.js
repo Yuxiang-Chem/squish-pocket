@@ -1,6 +1,6 @@
 import {ruleFor,validValue} from '../browser/dist/merge-rules.js';
 import {roomsAPI} from './rooms-api.js';
-import {FLASK_RECORD_EPOCH} from '../browser/dist/record-epoch.js';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH} from '../browser/dist/record-epoch.js';
 const RECIPIENT = 'chem.xjtlu@gmail.com';
 const RECORD = 'SELECT players.* FROM players JOIN world_record ON world_record.player_id = players.id WHERE world_record.slot = 1';
 const BOTTLE_IDS = ['classic', 'lab-flask', 'classic-water', 'lab-flask-water', 'separating-funnel', 'conical-flask', 'separating-funnel-water', 'conical-flask-water'];
@@ -8,7 +8,7 @@ const BOTTLE_NAMES = {all: 'All bottles', classic: 'Original bottle', 'lab-flask
 const validScoreFor = (score,rule) => Number.isSafeInteger(score) && score >= 0 && score <= 1000000000 && score % (rule.count===3?3:4) === 0;
 const validTileFor=(tile,rule)=>validValue(tile,rule.id);
 function scopedRecords(db){
-  return {prepare(sql){return db.prepare(sql.replace(/\b(players|world_record|bottle_scores|bottle_records|record_messages|bottle_messages|flask_current_scores)\b/g,name=>'three_'+name));},batch(statements){return db.batch(statements);}};
+  return {prepare(sql){return db.prepare(sql.replace(/\b(players|world_record|bottle_scores|bottle_records|record_messages|bottle_messages|flask_current_scores)\b/g,name=>'three_v'+THREE_RECORD_EPOCH+'_'+name));},batch(statements){return db.batch(statements);}};
 }
 const json = (body, status = 200) => Response.json(body, {status, headers: {
   'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'
@@ -71,6 +71,7 @@ async function summary(env, playerId) {
       ORDER BY p.best_score DESC,CASE WHEN r.player_id=p.id THEN 0 ELSE 1 END,p.best_at,p.id LIMIT 5`),
     ...BOTTLE_IDS.map(id=>bottleLeaders(env.ACHIEVEMENTS,id))
   ]);
+  const announcement=rule.id==='three'?await env.ACHIEVEMENTS.prepare('SELECT published_at AS publishedAt, expires_at AS expiresAt FROM three_v2_release_notice WHERE id=1').first():null;
   const winner = results[1].results[0];
   const bottles = Object.fromEntries(BOTTLE_IDS.map((id,index) => {
     const record = results[4].results.find(row => row.bottle_id === id);
@@ -81,10 +82,10 @@ async function summary(env, playerId) {
       highestTile: (id === 'lab-flask' ? results[7].results[0]?.tile : results[5].results.find(row => row.bottle_id === id)?.tile) ?? rule.start,
       ...(id === 'lab-flask' ? {recordEpoch: FLASK_RECORD_EPOCH,
         ...(playerId ? {recordPersonal: results[8].results[0] ?? {score: 0, highestTile:rule.start}} : {})} : {}),
-      ...(playerId ? {personal: {score: id==='lab-flask'?(results[8].results[0]?.score??0):(personal?.score??0), highestTile: personal?.highestTile??2}} : {})}];
+      ...(playerId ? {personal: {score: id==='lab-flask'?(results[8].results[0]?.score??0):(personal?.score??0), highestTile: personal?.highestTile??rule.start}} : {})}];
   }));
   return {
-    bottles,mergeMode:rule.id,milestone:rule.milestone,reachedMilestone:results[0].results[0].count,
+    bottles,mergeMode:rule.id,...(rule.id==='three'?{achievementEpoch:THREE_RECORD_EPOCH,announcement}:{}),milestone:rule.milestone,reachedMilestone:results[0].results[0].count,
     leaderboard:publicLeaders(results[9].results,playerId),
     ...(rule.id==='two'?{reached2048:results[0].results[0].count}:{}),
     highestTile: results[2].results[0].tile ?? rule.start,
@@ -98,6 +99,7 @@ async function summary(env, playerId) {
 async function submit(request, env) {
   const rule=env.mergeRule??ruleFor(),validScore=score=>validScoreFor(score,rule),validTile=tile=>validTileFor(tile,rule);
   const {id, hash} = await identity(request), data = await body(request);
+  if(rule.id==='three'&&data.achievementEpoch!==THREE_RECORD_EPOCH)fail('Three Combine achievements restarted. Refresh the game to join the new board.',409);
   const {score, highestTile} = data;
   const name = typeof data.name === 'string' ? data.name.trim() : '';
   if (!name || name.length > 32 || /[\u0000-\u001f\u007f]/.test(name)) fail('Choose a name of 1–32 characters.', 400);
@@ -147,6 +149,7 @@ async function submit(request, env) {
 
 async function sendMessage(request, env) {
   const {id, hash} = await identity(request), data = await body(request);
+  if(env.mergeRule?.id==='three'&&data.achievementEpoch!==THREE_RECORD_EPOCH)fail('Three Combine achievements restarted. Refresh the game to join the new board.',409);
   const bottle = data.bottle === undefined ? 'all' : data.bottle;
   if (typeof bottle !== 'string' || !Object.hasOwn(BOTTLE_NAMES, bottle)) fail('Choose a valid bottle record.', 400);
   const message = typeof data.message === 'string' ? data.message.trim() : '';
@@ -189,7 +192,7 @@ async function sendMessage(request, env) {
   }
   try { await env.ACHIEVEMENTS.prepare(`UPDATE ${table} SET status = 'sent' WHERE id = ?`).bind(messageId).run(); }
   catch { console.error(JSON.stringify({event: 'record_email_status_failed'})); }
-  return json({sent: true, bottle,mergeMode:env.mergeRule?.id??'two'});
+  return json({sent:true,bottle,mergeMode:env.mergeRule?.id??'two',...(env.mergeRule?.id==='three'?{achievementEpoch:THREE_RECORD_EPOCH}:{})});
 }
 
 export default {

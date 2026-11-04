@@ -12,7 +12,7 @@ with sync_playwright() as p:
   browser=getattr(p,name).launch();page=browser.new_page(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=2)
   errors=[];requests=[];messages=[];page.on('pageerror',lambda e:errors.append(str(e)))
   for mode,score,tile,nick in [('two',4096,2048,'Two friend'),('three',900,729,'A squishy friend')]:
-   profile={'id':str(uuid.uuid4()),'token':str(uuid.uuid4()),'mergeMode':mode,'name':nick,'flaskRecord':{'epoch':2,'score':0,'highestTile':1 if mode=='three' else 2},'recordCelebrations':{id:9000 for id in ids},'score':score,'highestTile':tile,'bottles':{'classic':{'score':score,'highestTile':tile},'conical-flask':{'score':score,'highestTile':tile}}}
+   profile={'id':str(uuid.uuid4()),'token':str(uuid.uuid4()),'mergeMode':mode,'achievementEpoch':2 if mode=='three' else 1,'name':nick,'flaskRecord':{'epoch':2,'score':0,'highestTile':1 if mode=='three' else 2},'recordCelebrations':{id:9000 for id in ids},'score':score,'highestTile':tile,'bottles':{'classic':{'score':score,'highestTile':tile},'conical-flask':{'score':score,'highestTile':tile}}}
    key='squish-pocket-achievements-v1'+(':three' if mode=='three' else '')
    page.add_init_script('if(!localStorage.getItem('+json.dumps(key)+'))localStorage.setItem('+json.dumps(key)+','+json.dumps(json.dumps(profile))+');')
   def records(route):
@@ -20,9 +20,9 @@ with sync_playwright() as p:
    triple=mode=='three';start=1 if triple else 2
    leaders=[{'rank':i+1,'name':mode+' player '+str(i+1),'score':(9000 if triple else 6000)-i*120,'isYou':triple and i==0} for i in range(5)]
    board={'record':leaders[0],'leaderboard':leaders,'highestTile':2187 if triple else 2048,'isRecordHolder':triple}
-   route.fulfill(status=200,json={**board,'mergeMode':mode,'milestone':2187 if triple else 2048,'reachedMilestone':7 if triple else 4,'emailReady':True,'bottles':{id:{**board,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}})
+   route.fulfill(status=200,json={**board,'mergeMode':mode,'achievementEpoch':2 if mode=='three' else 1,'milestone':2187 if triple else 2048,'reachedMilestone':7 if triple else 4,'emailReady':True,'bottles':{id:{**board,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}})
   page.route('**/api/achievements*',records)
-  page.route('**/api/record-message*',lambda r:(messages.append(r.request.url),r.fulfill(status=200,json={'mergeMode':'three','ok':True})))
+  page.route('**/api/record-message*',lambda r:(messages.append(r.request.url),r.fulfill(status=200,json={'mergeMode':'three','achievementEpoch':2,'ok':True})))
   page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort())
   page.goto(base+'/?merge=two',wait_until='networkidle');page.locator('#mode-classic').click();page.locator('[data-bottle=classic]').click();page.locator('#classic-play').click()
   original_url=page.url;best=page.locator('#best').inner_text();page.locator('#achievements').click()

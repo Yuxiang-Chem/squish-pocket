@@ -1,6 +1,6 @@
 export const RULES=Object.freeze({
-  two:Object.freeze({id:'two',name:'Two Combine',count:2,start:2,base:2,milestone:2048,maxValue:4096,spawnLevels:5}),
-  three:Object.freeze({id:'three',name:'Three Combine',count:3,start:1,base:3,milestone:2187,maxValue:177147,spawnLevels:3})
+  two:Object.freeze({id:'two',name:'Two Combine',count:2,blobScale:1,start:2,base:2,milestone:2048,maxValue:4096,spawnLevels:5}),
+  three:Object.freeze({id:'three',name:'Three Combine',count:3,blobScale:1.3,start:1,base:3,milestone:2187,maxValue:177147,spawnLevels:3})
 });
 export const ruleFor=mode=>RULES[mode==='three'?'three':'two'];
 export const CURRENT_RULE=ruleFor(typeof location==='undefined'?'two':new URL(location.href).searchParams.get('merge'));

@@ -1,16 +1,16 @@
 import {outlinesTouch} from './preparation-contact.js?v=29';
-import {ruleFor,valueFor,connectedTriples} from './merge-rules.js?v=59';
-import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=59';
+import {ruleFor,valueFor,connectedTriples} from './merge-rules.js?v=61';
+import {prepare,measure,integrate,membrane,walls,overlap,contact,separateBodies} from './softbody.js?v=61';
 import {normalizePhysics,materialFor} from './physics-settings.js?v=29';
 import {launchOrigin,shotVector} from './controls.js?v=6';
-import {refillRack,hasMatchingNeighbors} from './rack.js?v=59';
-import {bottleFor,isBottleId} from './bottles.js?v=59';
+import {refillRack,hasMatchingNeighbors} from './rack.js?v=61';
+import {bottleFor,isBottleId} from './bottles.js?v=61';
 import {eject} from './ejection.js?v=29';
 import {insertedOrder} from './preparation-gesture.js?v=29';
-import {createWaterState,advanceWater,waterContact} from './water.js?v=59';
-import {FLASK_RECORD_EPOCH} from './record-epoch.js?v=59';
+import {createWaterState,advanceWater,waterContact} from './water.js?v=61';
+import {FLASK_RECORD_EPOCH,achievementEpochFor} from './record-epoch.js?v=61';
 export const WIDTH=360, HEIGHT=420, DANGER=103, MAX_LEVEL=11;
-export const radiusFor=(level,blobSize=150)=>13*1.2**level*blobSize/100;
+export const radiusFor=(level,blobSize=150,mergeMode='two')=>13*1.2**level*blobSize/100*ruleFor(mergeMode).blobScale;
 // Matching blobs fuse for MERGE_DELAY seconds before combining; the result then
 // grows from its sources' radius over MERGE_GROW. Reduced motion merges on contact.
 export const MERGE_DELAY=.3,MERGE_GROW=.3;
@@ -22,7 +22,7 @@ export function blob(level,x,y,vx=0,vy=0){
 }
 export class Engine {
   constructor(seed=Date.now(),bottleId='classic',mergeMode='two'){
-    this.mergeMode=ruleFor(mergeMode).id;
+    this.mergeMode=ruleFor(mergeMode).id;this.achievementEpoch=achievementEpochFor(this.mergeMode);this.blobScale=this.rules.blobScale;
     this.bottleId=isBottleId(bottleId)?bottleId:'classic';
     this.bottleVersion=this.vessel.BOTTLE_VERSION;this.recordEpoch=FLASK_RECORD_EPOCH;this.blobs=[];this.score=0;this.shots=0;this.current=0;this.next=1;this.highestLevel=0;
     this.cooldown=0;this.over=false;this.endReason=null;this.seed=seed>>>0;this.fuseSerial=0;
@@ -36,10 +36,10 @@ export class Engine {
   get vessel(){return bottleFor(this.bottleId);}
   randomUint(){this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed;}
   setPhysics(settings){
-    const oldSize=this.physics?.blobSize??150,next=normalizePhysics(settings);
-    this.physics=next;
+    const oldSize=this.physics?.blobSize??150,oldScale=this.blobScale??1,next=normalizePhysics(settings);
+    this.physics=next;this.blobScale=this.rules.blobScale;
     for(const b of this.blobs){
-      const previousRadius=b.renderRadius??radiusFor(b.level,oldSize),nextRadius=this.bodyRadius(b),ratio=nextRadius/previousRadius;
+      const previousRadius=b.renderRadius??radiusFor(b.level,oldSize)*oldScale,nextRadius=this.bodyRadius(b),ratio=nextRadius/previousRadius;
       b.renderRadius=nextRadius;
       if(b.nodes&&Math.abs(ratio-1)>.000001){
         for(const p of b.nodes){
@@ -50,7 +50,7 @@ export class Engine {
       }
     }
   }
-  radius(level){return radiusFor(level,this.physics.blobSize);}
+  radius(level){return radiusFor(level,this.physics.blobSize,this.mergeMode);}
   bodyRadius(b){
     const full=this.radius(b.level);if(b.grow===undefined)return full;
     const t=Math.min(1,b.grow/MERGE_GROW),start=1/1.2;
@@ -209,6 +209,8 @@ export class Engine {
     }
   }
   static restore(data){
+    if(data?.achievementEpoch!==undefined&&(!Number.isSafeInteger(data.achievementEpoch)||data.achievementEpoch<1))return null;
+    if(data?.blobScale!==undefined&&(!Number.isFinite(data.blobScale)||data.blobScale<=0||data.blobScale>2))return null;
     if(data?.mergeMode!==undefined&&!['two','three'].includes(data.mergeMode))return null;
     if(data?.recordEpoch!==undefined&&(!Number.isSafeInteger(data.recordEpoch)||data.recordEpoch<0))return null;
     if(data?.bottleId!==undefined&&!isBottleId(data.bottleId))return null;
@@ -229,7 +231,7 @@ export class Engine {
     // Three capped values cannot be produced with only three slots and 2–32 entries.
     if(data.rack?.every(b=>b.level===MAX_LEVEL))return null;
     const restored=Object.assign(new Engine(undefined,data.bottleId??'classic',data.mergeMode??'two'),data);
-    restored.recordEpoch=data.recordEpoch??0;
+    restored.achievementEpoch=data.achievementEpoch??1;restored.recordEpoch=data.recordEpoch??0;restored.blobScale=data.blobScale??1;
     restored.waterState=createWaterState();
     const {bottleWalls,BOTTLE_VERSION,BOTTLE_FLOOR}=restored.vessel;
     // Older saves have no serial; unpaired fuses are dropped on the next step.
@@ -254,6 +256,9 @@ export class Engine {
         bottleWalls(b);measure(b,1/120);
       }
     }
-    restored.bottleVersion=BOTTLE_VERSION;restored.setPhysics(data.physics);restored.syncRack();return restored;
+    const resize=restored.blobScale!==restored.rules.blobScale;
+    restored.bottleVersion=BOTTLE_VERSION;restored.setPhysics(data.physics);
+    if(resize)for(const b of restored.blobs)if(b.nodes&&!b.spilled){bottleWalls(b);measure(b,1/120);}
+    restored.syncRack();return restored;
   }
 }

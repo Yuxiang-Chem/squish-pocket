@@ -16,7 +16,7 @@ with sync_playwright() as p:
   def records(route):
    triple=parse_qs(urlparse(route.request.url).query).get('merge')==['three'];requests.append({'triple':triple,'method':route.request.method})
    start=1 if triple else 2
-   data={'mergeMode':'three' if triple else 'two','milestone':2187 if triple else 2048,'reachedMilestone':0,'reached2048':0,'highestTile':start,'record':None,'leaderboard':[],'emailReady':False,'isRecordHolder':False,'bottles':{id:{'record':None,'leaderboard':[],'highestTile':start,'isRecordHolder':False,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}}
+   data={'mergeMode':'three' if triple else 'two','achievementEpoch':2 if triple else 1,'milestone':2187 if triple else 2048,'reachedMilestone':0,'reached2048':0,'highestTile':start,'record':None,'leaderboard':[],'emailReady':False,'isRecordHolder':False,'bottles':{id:{'record':None,'leaderboard':[],'highestTile':start,'isRecordHolder':False,**({'recordEpoch':2} if id=='lab-flask' else {})} for id in ids}}
    route.fulfill(status=200,json=data)
   page.route('**/api/achievements*',records);page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort())
   page.goto(base,wait_until='networkidle');page.locator('[data-merge-mode=three]').click();page.wait_for_url('**merge=three');page.wait_for_load_state('networkidle')
@@ -28,7 +28,7 @@ with sync_playwright() as p:
   expect(page.locator('#merge-rule-badge')).to_be_visible();saved=page.evaluate('JSON.parse(localStorage.getItem("squish-pocket-v1:three"))');assert saved['engine']['mergeMode']=='three'
   assert page.evaluate('JSON.parse(localStorage.getItem("squish-pocket-achievements-v1")).score')==4096
   result=page.evaluate('''async()=>{
-   const {Engine,blob}=await import('./engine.js?v=59');const {prepare,measure}=await import('./softbody.js?v=59');const e=new Engine(42,'classic','three');
+   const {Engine,blob}=await import('./engine.js?v=61');const {prepare,measure}=await import('./softbody.js?v=61');const e=new Engine(42,'classic','three');
    e.blobs=[145,180,215].map(x=>blob(0,x,300));for(const b of e.blobs){prepare(b,e.radius(0),1/120);measure(b,1/120);b.inBottle=true;b.hasEntered=true;for(const n of b.nodes)n.bottleSide=true;}
    for(let i=0;i<50;i++)e.step(1/120);
    localStorage.setItem('squish-pocket-v1:three',JSON.stringify({version:1,engine:e,started:true,best:e.score,sound:false}));return {score:e.score,levels:e.blobs.map(b=>b.level),mode:e.mergeMode};
