@@ -1,8 +1,8 @@
-import {renderThreeAnnouncement} from './announcement.js?v=62';
-import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=62';
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=62';
-import {BOTTLES} from './bottles.js?v=62';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=62';
+import {renderThreeAnnouncement} from './announcement.js?v=68';
+import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=68';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=68';
+import {BOTTLES} from './bottles.js?v=68';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=68';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
@@ -394,7 +394,7 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     renderThreeAnnouncement($('achievement-season-note'),rule.id,s?.announcement);
     dialog.querySelector('.achievement-badge').textContent=String(rule.milestone);
     dialog.querySelector('.achievement-intro').textContent=rule.name+' · Every '+milestone+' starts with a tiny '+(rule.id==='three'?'one.':'two.');
-    dialog.querySelector('.achievement-footnote').textContent=rule.name+' keeps its own name, best scores and saved rounds in this browser. Reaching '+milestone+' in the bottle or ready row counts once across rounds. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.'+(rule.id==='three'?' Only fresh rounds started after the restart count toward these achievements.':'');
+    dialog.querySelector('.achievement-footnote').textContent=rule.name+' keeps its own name, best scores and saved rounds in this browser. The player counter counts each player once. The blob total counts every new '+milestone+' merge in the bottle or ready row from the tracking date. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.'+(rule.id==='three'?' Only fresh rounds started after the restart count toward these achievements.':'');
     $('achievement-personal-tile').textContent = p.highestTile.toLocaleString();
     $('achievement-personal-score').textContent = p.score.toLocaleString();
     $('achievement-milestone').textContent = p.highestTile >= rule.milestone ? `${milestone} club · you made it!` : `Your next little milestone: ${milestone}`;

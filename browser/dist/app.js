@@ -1,17 +1,17 @@
-import {recordEligible,recordScore} from './record-epoch.js?v=62';
-import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=62';
-import {createStartPage} from './start-page.js?v=62';
-import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=62';
+import {recordEligible,recordScore} from './record-epoch.js?v=68';
+import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=68';
+import {createStartPage} from './start-page.js?v=68';
+import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=68';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
 import {PHYSICS_DEFAULTS_VERSION,playerPhysics} from './physics-settings.js?v=31';
-import {RackMotion} from './rack-motion.js?v=62';
-import {isBottleId} from './bottles.js?v=62';
+import {RackMotion} from './rack-motion.js?v=68';
+import {isBottleId} from './bottles.js?v=68';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=62';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=68';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
-import {connectAchievements} from './achievements.js?v=62';
+import {connectAchievements} from './achievements.js?v=68';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];

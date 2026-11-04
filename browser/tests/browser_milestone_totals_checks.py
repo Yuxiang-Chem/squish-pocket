@@ -24,7 +24,7 @@ with sync_playwright() as p:
   page.goto(base,wait_until='domcontentloaded')
   # Create real ready-row milestones, then resume those saves in the application.
   saves=page.evaluate('''async()=>{const saves={};
-   const {Engine}=await import('./engine.js?v=62');const {refillRack}=await import('./rack.js?v=62');
+   const {Engine}=await import('./engine.js?v=68');const {refillRack}=await import('./rack.js?v=68');
    for(const mode of ['two','three']){
     const e=new Engine(7,'classic',mode),level=mode==='two'?9:6;
     for(let i=0;i<(mode==='two'?2:3);i++){

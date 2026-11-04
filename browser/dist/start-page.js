@@ -1,8 +1,8 @@
-import {renderThreeAnnouncement,loadThreeAnnouncement} from './announcement.js?v=62';
-import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=62';
-import {BOTTLES} from './bottles.js?v=62';
-import {radiusFor} from './engine.js?v=62';
-import {RoomClient} from './room-client.js?v=62';
+import {renderThreeAnnouncement,loadThreeAnnouncement} from './announcement.js?v=68';
+import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=68';
+import {BOTTLES} from './bottles.js?v=68';
+import {radiusFor} from './engine.js?v=68';
+import {RoomClient} from './room-client.js?v=68';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
 const blobCaption='<span class="blob-caption" aria-hidden="true">•ᴗ•</span>';

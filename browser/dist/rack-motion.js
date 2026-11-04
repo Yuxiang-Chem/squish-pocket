@@ -1,11 +1,11 @@
-import {ruleFor} from './merge-rules.js?v=62';
-import {bottleFor} from './bottles.js?v=62';
-import {prepare,measure,membrane,overlap,contact,separateBodies} from './softbody.js?v=62';
+import {ruleFor} from './merge-rules.js?v=68';
+import {bottleFor} from './bottles.js?v=68';
+import {prepare,measure,membrane,overlap,contact,separateBodies} from './softbody.js?v=68';
 import {materialFor,normalizePhysics} from './physics-settings.js?v=29';
-import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=62';
+import {HOLE,clusterLayout,trayRadius,preparationWalls,returnTarget} from './preparation.js?v=68';
 import {eject} from './ejection.js?v=29';
 import {outlinesTouch,renderedOutline} from './preparation-contact.js?v=29';
-import {MAX_LEVEL} from './engine.js?v=62';
+import {MAX_LEVEL} from './engine.js?v=68';
 import {insertedOrder} from './preparation-gesture.js?v=29';
 export {trayRadius};
 export const RACK_Y=HOLE.y;

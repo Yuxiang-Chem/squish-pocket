@@ -1,7 +1,7 @@
-import * as original from './bottle.js?v=62';
-import {labFlask} from './lab-flask.js?v=62';
-import {separatingFunnel,conicalFlask} from './lab-vessels.js?v=62';
-import {waterBottle} from './water.js?v=62';
+import * as original from './bottle.js?v=68';
+import {labFlask} from './lab-flask.js?v=68';
+import {separatingFunnel,conicalFlask} from './lab-vessels.js?v=68';
+import {waterBottle} from './water.js?v=68';
 const classic=Object.freeze({id:'classic',name:'Original bottle',...original});
 export const BOTTLES=Object.freeze({classic,'lab-flask':labFlask,
   'classic-water':waterBottle(classic,'classic-water','Original bottle · water'),
