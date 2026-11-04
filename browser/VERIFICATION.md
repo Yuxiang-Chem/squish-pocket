@@ -306,3 +306,23 @@ Published on 2026-11-04 as Worker version `14512392-e5ea-4a57-ab1f-1c79202f6f7b`
 - The migration creates a publication timestamp and expiry exactly 172,800,000 ms later, separately for test and official. Notice timers hide both home and achievement announcements at expiry even on open pages. Unit checks cover before publication, both deadline boundaries, expiry timers and Two Combine visibility.
 - All 225 automated checks passed: 186 browser Node, 34 backend/release Node and 5 Worker runtime. Local, test-site and official Chromium/WebKit passed reset/expiry and larger-blob flows with shared writes and room sockets mocked or blocked.
 - The earlier review-service interruption was resolved before release. Verified test `be4bc363-a27a-4075-9805-5ff798c1392c` was promoted to official `3129833e-f16c-4c2e-89e6-ce1b438fb701`, with all 31 assets and both APIs matching source. Full pre/post exports prove every old table row unchanged, including Two Combine history and archived Three Combine records. Four Three Combine identities were copied with zero progress, all fresh leaderboards were empty, and foreign-key checks passed. The official notice expires 2026-11-06 18:42:12 Asia/Shanghai, exactly 48 hours after its publication timestamp.
+
+### Official milestone counters, excluding experimental Lab — 2026-11-04
+
+- Assets v68 retain the unique-player counters and add repeated milestone blob
+  totals. Round IDs and monotonic counts prevent retries and reloads from
+  duplicating merges; both ready-row and bottle merges count. Tracking starts
+  with migration 0012 and never fabricates past totals.
+- The candidate contains no Lab menu, page, module or rotor assets. Existing
+  bottle geometry modules remain present, including the Three-neck flask.
+- Test candidate `260d78d2-4c34-49ec-96bb-21acbf2798af` passed all 233 automated
+  checks. All 32 assets and both achievement APIs matched source. Local
+  Chromium/WebKit checked repeat merges, reload/refresh deduplication, both
+  labels and phone widths using mocked shared writes.
+- Published official `8a2d34ed-5c75-4084-b6c2-24f6e3e9d2cb` using the exact
+  verified candidate. Live Chromium/WebKit matched both counter values to the
+  real public API and confirmed no Lab entry point or module requests at phone
+  widths. All browser score writes were mocked. Existing records were retained,
+  including ordinary live score improvements, and database integrity checks pass.
+- The test site was restored to its preserved Lab version; all 34 asset hashes
+  match the pre-promotion snapshot. Official serves only the 32 non-Lab assets.

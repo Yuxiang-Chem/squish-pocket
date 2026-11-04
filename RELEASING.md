@@ -322,3 +322,33 @@ retention, larger ready/physical blobs, shooting and repeated save restoration.
 All QA writes and room sockets were mocked or blocked. Private exports and
 reports remain ignored inside `.releases/`. The earlier review-service usage
 limit interruption was resolved before these release checks and publication.
+
+## Milestone totals without Lab — 2026-11-04
+
+This release adds the total number of 2,048 blobs in Two Combine and 2,187 blobs
+in Three Combine alongside the existing unique-player counters. It preserves
+all existing scores, names and Top 5 boards. Additive migration 0012 starts
+tracking new milestone creations; it does not reset achievements.
+
+The official candidate is based on the previous official release plus the
+milestone feature only. It excludes the experimental Lab mode, its menu and
+its assets. Lab stays on the test deployment and its development branch.
+
+Assets v68 passed all 233 automated checks (191 browser Node, 37 backend/release,
+five Worker runtime). Verified test candidate:
+`260d78d2-4c34-49ec-96bb-21acbf2798af`, source fingerprint
+`63c53bf85c798f2f725e5d6ed871e0528cbefb67abb4d4ffc0e1e9ad4818af76`.
+A private official database backup and migration rehearsal confirm preservation
+of all 260 existing rows across 26 tables.
+
+Promoted that exact candidate to official Worker
+`8a2d34ed-5c75-4084-b6c2-24f6e3e9d2cb`. All 32 official assets and both APIs
+matched source. Live Chromium/WebKit confirmed both counters and the absence
+of Lab, with all browser writes mocked. Post-release database exports retain
+all 260 existing rows and pass integrity/foreign-key checks; two score rows
+improved through normal live play during the release. No achievements reset.
+
+Restored the test Worker to its preserved Lab version
+`ae049779-8b05-47f0-ad5d-26fa8f44202d`; all 34 test assets match their saved
+pre-promotion hashes. This restoration changes no database data. Lab remains
+exclusive to the test site and its development branch.
