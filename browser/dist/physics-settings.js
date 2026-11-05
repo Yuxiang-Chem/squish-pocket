@@ -1,13 +1,13 @@
 export const DEFAULT_PHYSICS=Object.freeze({stiffness:10,viscosity:0,blobSize:150});
 export function defaultPhysicsFor(bottleId='classic'){
   const bottle=typeof bottleId==='string'?bottleId.replace(/-water$/,''):'';
-  return {...DEFAULT_PHYSICS,blobSize:bottle==='lab-flask'?120:['conical-flask','separating-funnel'].includes(bottle)?100:150};
+  return {...DEFAULT_PHYSICS,blobSize:bottle==='lab-flask'?120:['conical-flask','separating-funnel'].includes(bottle)?115:150};
 }
 export function normalizePhysics(settings){
   const result={};
   for(const key of ['stiffness','viscosity','blobSize']){
     const value=settings?.[key];
-    const min=key==='blobSize'?40:0,max=key==='blobSize'?150:100;
+    const min=key==='blobSize'?40:0,max=key==='blobSize'?200:100;
     result[key]=Number.isFinite(value)?Math.max(min,Math.min(max,value)):DEFAULT_PHYSICS[key];
   }
   return result;
@@ -36,4 +36,12 @@ export function upgradePhysicsDefaults(settings,version){
 // normalizePhysics/setPhysics still support the engine's simulation checks.
 export function playerPhysics(){
   return {...DEFAULT_PHYSICS};
+}
+
+export const VESSEL_DEFAULTS_VERSION=2;
+export function upgradeVesselDefaults(settings,bottleId,version){
+  const physics=normalizePhysics(settings),base=String(bottleId).replace(/-water$/,'');
+  const defaults=defaultPhysicsFor(bottleId),oldVesselSize=['conical-flask','separating-funnel'].includes(base)&&physics.blobSize===100,oldBlanketSize=physics.blobSize===150&&defaults.blobSize!==150;
+  if((version??0)<VESSEL_DEFAULTS_VERSION&&(oldVesselSize||oldBlanketSize)&&physics.stiffness===10&&physics.viscosity===0)return defaults;
+  return physics;
 }

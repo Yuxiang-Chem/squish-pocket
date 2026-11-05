@@ -9,10 +9,10 @@ const dt=1/120;
 test('Three Combine is exactly 120% of each Two Combine vessel, including all water variants',()=>{
  for(const id of Object.keys(BOTTLES)){
   const two=new Engine(42,id,'two'),three=new Engine(42,id,'three');
-  const base=id.startsWith('lab-flask')?120:id.includes('conical')||id.includes('funnel')?100:150;
+  const base=id.startsWith('lab-flask')?120:id.includes('conical')||id.includes('funnel')?115:150;
   assert.equal(two.physics.blobSize,base);assert.equal(three.physics.blobSize,base);
   for(let level=0;level<=11;level++)assert.ok(Math.abs(three.radius(level)/two.radius(level)-1.2)<1e-12);
-  assert.equal(three.physics.blobSize*three.rules.blobScale,base===150?180:base===120?144:120);
+  assert.equal(three.physics.blobSize*three.rules.blobScale,base===150?180:base===120?144:138);
  }
 });
 test('existing 130% Three Combine saves shrink once without changing progress or milestones',()=>{

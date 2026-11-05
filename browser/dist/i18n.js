@@ -1,4 +1,4 @@
-import zh from './i18n-zh.js?v=84';
+import zh from './i18n-zh.js?v=89';
 export const LANGUAGE_KEY='squish-pocket-language-v1';
 export function readLanguage(storage){
   try{return (storage??globalThis.localStorage).getItem(LANGUAGE_KEY)==='en'?'en':'zh-CN';}catch{return 'zh-CN';}

@@ -1,10 +1,10 @@
-import {t,onLanguageChange,translateTree} from './i18n.js?v=84';
-import {defaultPhysicsFor} from './physics-settings.js?v=84';
-import {renderThreeAnnouncement,loadThreeAnnouncement} from './announcement.js?v=84';
-import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=84';
-import {BOTTLES} from './bottles.js?v=84';
-import {radiusFor} from './engine.js?v=84';
-import {RoomClient} from './room-client.js?v=84';
+import {t,onLanguageChange,translateTree} from './i18n.js?v=89';
+import {defaultPhysicsFor} from './physics-settings.js?v=89';
+import {renderThreeAnnouncement,loadThreeAnnouncement} from './announcement.js?v=89';
+import {CURRENT_RULE,ruleFor,valueFor} from './merge-rules.js?v=89';
+import {BOTTLES} from './bottles.js?v=89';
+import {radiusFor} from './engine.js?v=89';
+import {RoomClient} from './room-client.js?v=89';
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
 const $=id=>document.getElementById(id);
 const blobCaption='<span class="blob-caption" aria-hidden="true">•ᴗ•</span>';
@@ -24,7 +24,7 @@ export function createStartPage(hooks){
     onRoom:(r,online)=>{
       if(!r)return;
       if((r.mergeMode??'two')!==rule.id)switchMergeMode(r.mergeMode??'two',r.code);
-      room=r;connected=online;bottleId=r.bottleId;
+      room=r;connected=online;bottleId=r.bottleId;hooks.selectBottle?.(bottleId,'multiplayer');
       hooks.updateMatch(r,online);renderRoom();
       const key=`${r.code}:${r.round}`;
       if(r.phase==='playing'&&key!==matchKey){matchKey=key;setPage('game');hooks.enterMatch(r,online);}
@@ -32,6 +32,7 @@ export function createStartPage(hooks){
     }
   });
   function setPage(next){
+    if(next==='home')hooks.selectBottle?.(bottleId,'classic');
     if(page==='game'&&next!=='game')hooks.suspend();page=next;
     $('start-page').classList.toggle('hidden',next==='game');$('game-layout').classList.toggle('hidden',next!=='game');
     $('mode-home').classList.toggle('hidden',next!=='home');$('mode-setup').classList.toggle('hidden',next!=='setup');
@@ -74,7 +75,7 @@ export function createStartPage(hooks){
     $('mode-back').textContent=t(room?(room.phase==='playing'?'← Leave room · forfeit match':'← Leave room'):'← Back');
   }
   function showSetup(selected){
-    mode=selected;readyBottle=null;choosingRoomBottle=false;setMenuStatus('');
+    mode=selected;readyBottle=null;choosingRoomBottle=false;setMenuStatus('');hooks.selectBottle?.(bottleId,mode);
     $('mode-setup').dataset.stage='bottles';renderSetupText();
     $('multiplayer-setup').classList.toggle('hidden',mode!=='multiplayer');
     $('room-forms').classList.toggle('hidden',!!room);$('room-lobby').classList.toggle('hidden',!room);
@@ -143,7 +144,7 @@ export function createStartPage(hooks){
   }
   function switchMergeMode(next,roomCode=null){
     const state=hooks.switchMergeMode(next);
-    rule=ruleFor(next);bottleId=state.bottleId;
+    rule=ruleFor(next);bottleId=state.bottleId;hooks.selectBottle?.(bottleId,page==='home'?'classic':mode);
     if(!roomCode)$('room-name').value=state.profile.name==='A squishy friend'?'':state.profile.name.slice(0,24);
     const url=new URL(location.href);url.searchParams.set('merge',rule.id);
     if(roomCode)url.searchParams.set('room',roomCode);else url.searchParams.delete('room');
@@ -176,7 +177,7 @@ export function createStartPage(hooks){
       if(mode==='multiplayer'){void run(()=>client.create($('room-name').value,bottleId,rule.id));return;}
       setPage('game');hooks.enterClassic(bottleId);return;
     }
-    bottleId=button.dataset.bottle;readyBottle=bottleId;renderBottles();
+    bottleId=button.dataset.bottle;readyBottle=bottleId;hooks.selectBottle?.(bottleId,mode);renderBottles();
   };
   $('room-change-bottle').onclick=()=>{choosingRoomBottle=!choosingRoomBottle;renderBottles();};
   $('room-create').onclick=()=>run(()=>client.create($('room-name').value,bottleId,rule.id));

@@ -372,3 +372,14 @@ candidate passed 239 automated checks and the local real multiplayer checks.
 Live official Chromium/WebKit passed the animated-picker and champion-note
 suites. Records, counters and announcement dates matched pre-release API
 summaries. The official release excludes Lab; development/test retains it.
+
+
+### Official game-rendered previews — 2026-11-05
+
+Official v89 passed 240 automated checks and local/live Chromium/WebKit.
+Canvas frames contain two/three separate bodies then one result, and the
+English heading persists in both locales. All sixteen vessel/mode defaults
+and locked slider displays passed; conical/funnel dry/water base is 115%.
+Lab menu/modules are absent on official. Eight Top 5 boards, keyboard and
+phone layouts passed. Room flows were exercised locally; remote shared
+writes and creator messages were intercepted.

@@ -1,4 +1,4 @@
-import {bottleFor} from './bottles.js?v=84';
+import {bottleFor} from './bottles.js?v=89';
 const original=bottleFor('classic');
 export const HOLE={x:180,y:58};
 export const trayRadius=(level,blobSize=150)=>Math.max(9,Math.min(22,13*1.2**level)*blobSize/100);

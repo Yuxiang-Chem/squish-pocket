@@ -426,3 +426,27 @@ loss disables messaging. All QA writes were mocked and no messages were sent.
 Public before/after audits preserved every bottle record, achievement epoch
 and announcement deadline: Two Combine remained 12 players / 7 milestone
 creations, and Three Combine remained 2 players / 2 creations.
+
+## Published game-style previews and 115% vessels — 2026-11-05
+
+The Lab-free v89 candidate was verified on test as
+`8bdd8bed-5b06-4f0e-91d1-8af5e80012e1` and promoted through the release guard
+to official `230062af-8cb3-4b43-a317-cddae9e35f03`. Source digest:
+`fc6d6acb05592a123c3d4247832f48d1deb89f994a550c18f899fb9698e7aa3d`.
+All 240 automated checks passed (198 game/locale, 37 backend/release, five
+Worker runtime). All 36 assets and both achievement APIs matched source;
+no migrations were pending. Engine mechanics, vessel geometry, achievement
+epochs and the room/API backend match the prior official baseline, aside
+from the requested vessel defaults.
+
+The home heading stays English under both locales, Chinese UI uses 团子,
+and combine controls share the actual game renderer and values. Conical and
+separating funnel defaults are 115%, including water variants (138% effective
+in Three Combine). Official settings show each bottle’s real fixed values.
+Lab entries and simulation assets are excluded from official. Local and live
+Chromium/WebKit passed animations, reduced motion, keyboard/language flow,
+all sixteen vessel/mode sizes and locked settings, and all eight Top 5 boards.
+Local real multiplayer passed both rules. The live holder-note/permission
+checks also passed, with no messages sent. All shared QA writes were mocked.
+Receipts, logs and public before/after audits are archived privately under
+`.releases/publish-game-previews-2026-11-05/`.

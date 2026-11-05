@@ -92,18 +92,18 @@ Migration `0012_milestone_totals.sql` only adds tables; it resets no records.
 ### Vessel blob defaults
 
 The Three-neck flask uses 120% base blob size. Conical flasks and separating
-funnels use 100%; the Original bottle stays at 150%. Each default also applies
+funnels use 115%; the Original bottle stays at 150%. Each default also applies
 to the water variant. Three Combine retains its additional 20% scale.
 Achievements shows the eight individual bottle Top 5 boards; the combined
 “All bottles” tab is removed. Existing shared records are preserved.
 
 
-### Bilingual home and merge previews
+### English heading and game-style merge previews
 
-The interface defaults to Chinese and uses **团团** for blobs. The compact
+The interface defaults to Chinese and uses **团子** for blobs. The compact
 **中/En** button changes language immediately and remembers the choice. The
-Chinese home heading is “找到你的团团乐趣”, with “Find your kind of squish”
-beneath it. Two/Three Combine controls show animated matching blobs merging,
+home heading stays “Find your kind of squish” in both languages. The mode
+previews use the game’s renderer to show 2+2→4 and 1+1+1→3,
 with accessible labels, keyboard selection and a static reduced-motion view.
 Both rules retain independent saved rounds, personal scores and Top 5 boards.
 Multiplayer uses the same in-card Start game flow as Classic.
@@ -111,3 +111,9 @@ Multiplayer uses the same in-card Start game flow as Classic.
 The congratulations page explains that only the current record holder can
 message the creator and invites a playful message. Current-holder checks still
 apply at the API. This official source excludes experimental Lab mode.
+
+The conical/separating funnel base size is 115% for dry and water bottles;
+Three Combine uses 138% effective size for those vessels. Official settings
+are fixed and show each vessel’s real defaults. Scores, saved-round identity,
+shared Top 5 boards, milestone counters and announcement dates are preserved.
+Development/test keeps the editable per-bottle settings and Lab separately.

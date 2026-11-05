@@ -1,6 +1,6 @@
 // Deformable, area-preserving particle membranes. Contacts act on the actual
 // outline, so a blob can flatten on the floor and squeeze between its neighbors.
-import {DEFAULT_MATERIAL} from './physics-settings.js?v=84';
+import {DEFAULT_MATERIAL} from './physics-settings.js?v=89';
 import {ejectionShape,ejectionPhase} from './ejection.js?v=29';
 export const COUNT=24;
 // Softer effective mass growth lets large jelly bodies respond to small hits.
