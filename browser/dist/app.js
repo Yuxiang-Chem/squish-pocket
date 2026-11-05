@@ -1,17 +1,18 @@
-import {recordEligible,recordScore} from './record-epoch.js?v=75';
-import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=75';
-import {createStartPage} from './start-page.js?v=75';
-import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=75';
+import {t,onLanguageChange,mountLanguagePicker} from './i18n.js?v=84';
+import {recordEligible,recordScore} from './record-epoch.js?v=84';
+import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=84';
+import {createStartPage} from './start-page.js?v=84';
+import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=84';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
-import {PHYSICS_DEFAULTS_VERSION,playerPhysics,defaultPhysicsFor} from './physics-settings.js?v=75';
-import {RackMotion} from './rack-motion.js?v=75';
-import {isBottleId} from './bottles.js?v=75';
+import {PHYSICS_DEFAULTS_VERSION,playerPhysics,defaultPhysicsFor} from './physics-settings.js?v=84';
+import {RackMotion} from './rack-motion.js?v=84';
+import {isBottleId} from './bottles.js?v=84';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=75';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=84';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
-import {connectAchievements} from './achievements.js?v=75';
+import {connectAchievements} from './achievements.js?v=84';
 
 const $=id=>document.getElementById(id);
 const colors=['#eaaa8c','#e6c87f','#afc4a0','#9abfcb','#b6abca','#d9a3b7','#80b6a6','#d8ab71','#9faed0','#d5c788','#c395c6','#e49e7d'];
@@ -29,7 +30,7 @@ let rackGesture=null,aimGesture=null,fireGesture=null;
 const dragMotion=new DragMotion(reducedMotion);
 const dragCanvas=document.createElement('canvas'),dragCtx=dragCanvas.getContext('2d');
 dragCanvas.className='prep-drag-layer';dragCanvas.setAttribute('aria-hidden','true');document.body.append(dragCanvas);
-let previewEngine=null,previewAccumulator=0,previewAge=0;
+let previewEngine=null,previewAccumulator=0,previewAge=0,overlayCopy=null,lastToast='';
 const selectedBottleKey=()=>'squish-pocket-selected-bottle'+(activeRule.id==='three'?':three':'');
 function savedBottle(){
   try{const id=localStorage.getItem(selectedBottleKey());if(isBottleId(id))return id;}catch{}
@@ -68,7 +69,7 @@ function save(){
   catch{if(!storageWarning){toast('Browser saving is unavailable');storageWarning=true;}}
 }
 function toast(message){
-  $('toast').textContent=message;$('toast').classList.add('show');
+  lastToast=message;$('toast').textContent=t(message);$('toast').classList.add('show');
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2400);
 }
 function unlockAudio(){
@@ -95,16 +96,17 @@ function modalOpen(){return !!document.querySelector('dialog[open]');}
 function playable(){return page==='game'&&started&&!paused&&!engine.over&&!modalOpen()&&(gameMode==='classic'||(roomConnected&&activeRoom?.phase==='playing'&&activeRoom.players[activeRoom.you]?.status==='playing'));}
 
 function showOverlay({kicker,title,description,button,action,secondary,secondaryAction,footnote,friends=false,stats=false}){
+  overlayCopy={kicker,title,description,button,action,secondary,secondaryAction,footnote,friends,stats};
   cancelAim();overlay.classList.remove('hidden');
   overlay.querySelector('.intro-friends').classList.toggle('hidden',!friends);
   $('round-stats').classList.toggle('hidden',!stats);
   $('round-bottle').classList.toggle('hidden',!stats);
   if(stats){achievements.renderRoundStats();void achievements.sync(true);}
-  $('overlay-kicker').textContent=kicker;$('overlay-title').innerHTML=title;
-  $('overlay-description').textContent=description;$('start').querySelector('span').textContent=button;
+  $('overlay-kicker').textContent=t(kicker);$('overlay-title').replaceChildren(...t(title).split(/<br\s*\/?>/i).flatMap((part,i)=>i?[document.createElement('br'),document.createTextNode(part)]:[document.createTextNode(part)]));
+  $('overlay-description').textContent=t(description);$('start').querySelector('span').textContent=t(button);
   $('start').onclick=action;$('secondary').classList.toggle('hidden',!secondary);
-  $('secondary').textContent=secondary??'';$('secondary').onclick=secondaryAction??null;
-  $('overlay-footnote').textContent=footnote??'';
+  $('secondary').textContent=t(secondary??'');$('secondary').onclick=secondaryAction??null;
+  $('overlay-footnote').textContent=t(footnote??'');
 }
 function newGame(){
   if(gameMode!=='classic')return;
@@ -158,20 +160,20 @@ function updateHUD(){
   engine.rackOrder().forEach((item,i)=>{
     const button=$(`rack-${i}`);button.dataset.blobId=item.id;
     positionChoice(item,i);
-    button.setAttribute('aria-label',`${engine.value(item.level)} blob, pull down to charge a shot, lift up to ${engine.rules.count===3?'rearrange':'merge or rearrange'}`);
+    button.setAttribute('aria-label',t(`${engine.value(item.level)} blob, pull down to charge a shot, lift up to ${engine.rules.count===3?'rearrange':'merge or rearrange'}`));
     button.setAttribute('aria-pressed',String(item.id===engine.selectedId));button.disabled=!playable();
-    button.title=`Choose ${engine.value(item.level)} to shoot`;
+    button.title=t(`Choose ${engine.value(item.level)} to shoot`);
   });
   updateShootAvailability();
   $('restart').classList.toggle('hidden',gameMode==='multiplayer');
   $('pause').disabled=!started||engine.over;
-  $('pause').setAttribute('aria-label',paused?'Resume game':'Pause game');
+  $('pause').setAttribute('aria-label',t(paused?'Resume game':'Pause game'));
   $('pause').querySelector('use').setAttribute('href',paused?'#i-play':'#i-pause');
-  $('sound').setAttribute('aria-label',sound?'Turn sound off':'Turn sound on');
+  $('sound').setAttribute('aria-label',t(sound?'Turn sound off':'Turn sound on'));
   $('sound').setAttribute('aria-pressed',String(sound));
   $('sound').querySelector('use').setAttribute('href',sound?'#i-sound':'#i-muted');
   updateAimUI();
-  canvas.setAttribute('aria-label',`${engine.vessel.name}. Three ready blobs: ${engine.rackOrder().map(b=>engine.value(b.level)).join(', ')}. Selected ${engine.value(engine.current)}. Aim through the opening. Use 1, 2, 3 to select a blob, left and right to aim, up and down for force, space to shoot.`);
+  canvas.setAttribute('aria-label',t(`${engine.vessel.name}. Three ready blobs: ${engine.rackOrder().map(b=>engine.value(b.level)).join(', ')}. Selected ${engine.value(engine.current)}. Aim through the opening. Use 1, 2, 3 to select a blob, left and right to aim, up and down for force, space to shoot.`));
 }
 function chooseSlot(index){
   if(!playable()||pointer!==null||rackGesture)return;
@@ -193,17 +195,17 @@ function positionChoice(item,i){
 }
 function updateAimUI(){
   $('power-fill').style.width=`${Math.max(4,power*100)}%`;
-  $('shoot').textContent=fireGesture?(fireGesture.manual&&power<=0?'Release to cancel':`Release · ${Math.round(power*100)}%`):'Hold to shoot ↓';
-  if(engine.over){$('hint').textContent=gameMode==='multiplayer'?'ROUND COMPLETE · CHECK THE ROOM':engine.endReason==='spill'?'GAME OVER · A BLOB FELL OUTSIDE':'ROUND OVER · ONE MORE ROUND?';return;}
+  $('shoot').textContent=t(fireGesture?(fireGesture.manual&&power<=0?'Release to cancel':`Release · ${Math.round(power*100)}%`):'Hold to shoot ↓');
+  if(engine.over){$('hint').textContent=t(gameMode==='multiplayer'?'ROUND COMPLETE · CHECK THE ROOM':engine.endReason==='spill'?'GAME OVER · A BLOB FELL OUTSIDE':'ROUND OVER · ONE MORE ROUND?');return;}
   if(rackGesture?.mode==='charge'){
-    $('hint').textContent=aimCancelled?'PULL FARTHER DOWN TO CHARGE · RETURN UP TO CANCEL':`FORCE ${Math.round(power*100)}% · RELEASE TO SHOOT`;
+    $('hint').textContent=t(aimCancelled?'PULL FARTHER DOWN TO CHARGE · RETURN UP TO CANCEL':`FORCE ${Math.round(power*100)}% · RELEASE TO SHOOT`);
   }else if(rackGesture?.mode==='drag'){
-    if(engine.rules.count===3){$('hint').textContent='LIFT TO REARRANGE · THREE EQUAL BLOBS MAKE ONE';return;}
-    $('hint').textContent=rackGesture.mergeTarget?'LOWER ON THE MATCHING BLOB TO MERGE':rackGesture.lifted&&rackGesture.dropIndex!==null?`RELEASE TO PLACE ${['LEFT','IN THE MIDDLE','RIGHT'][rackGesture.dropIndex]} · MATCHING BLOBS MERGE`:rackGesture.blocked?'LIFT TO REARRANGE · RELEASE TO RETURN':'MATCHING CONTACTS MERGE · RELEASE TO RETURN';
-  }else if(rackMotion.busy){$('hint').textContent='PREPARING YOUR NEXT BLOBS…';}
-  else if(fireGesture)$('hint').textContent=`FORCE ${Math.round(power*100)}% · ↑↓ FORCE · ←→ AIM · RELEASE TO FIRE`;
-  else if(aimGesture||keyboardAiming)$('hint').textContent=`FORCE ${Math.round(power*100)}% · RELEASE TO SHOOT`;
-  else $('hint').innerHTML=engine.rules.count===3?'PULL DOWN TO SHOOT <span>·</span> LIFT UP TO REARRANGE':'PULL DOWN TO SHOOT <span>·</span> LIFT UP TO MERGE & REARRANGE';
+    if(engine.rules.count===3){$('hint').textContent=t('LIFT TO REARRANGE · THREE EQUAL BLOBS MAKE ONE');return;}
+    $('hint').textContent=t(rackGesture.mergeTarget?'LOWER ON THE MATCHING BLOB TO MERGE':rackGesture.lifted&&rackGesture.dropIndex!==null?`RELEASE TO PLACE ${['LEFT','IN THE MIDDLE','RIGHT'][rackGesture.dropIndex]} · MATCHING BLOBS MERGE`:rackGesture.blocked?'LIFT TO REARRANGE · RELEASE TO RETURN':'MATCHING CONTACTS MERGE · RELEASE TO RETURN');
+  }else if(rackMotion.busy){$('hint').textContent=t('PREPARING YOUR NEXT BLOBS…');}
+  else if(fireGesture)$('hint').textContent=t(`FORCE ${Math.round(power*100)}% · ↑↓ FORCE · ←→ AIM · RELEASE TO FIRE`);
+  else if(aimGesture||keyboardAiming)$('hint').textContent=t(`FORCE ${Math.round(power*100)}% · RELEASE TO SHOOT`);
+  else $('hint').innerHTML=t(engine.rules.count===3?'PULL DOWN TO SHOOT <span>·</span> LIFT UP TO REARRANGE':'PULL DOWN TO SHOOT <span>·</span> LIFT UP TO MERGE & REARRANGE');
 }
 function updateShootAvailability(){
   // Native disabled buttons can bypass touch handlers on iOS. Guard actions
@@ -366,8 +368,8 @@ $('confirm-reset').onclick=()=>{$('reset-dialog').close();newGame();};
 $('help').onclick=()=>{cancelAim();$('guide').showModal();};
 function updatePhysicsUI(){
   for(const name of ['stiffness','viscosity']){
-    const value=engine.physics[name];$(name).value=value;$(`${name}-value`).textContent=`${value}%`;
-    $(name).setAttribute('aria-valuetext',`${value}%, ${name==='stiffness'?(value<35?'soft':value>70?'firm':'medium'):(value<35?'free-flowing':value>70?'thick and slow':'moderate resistance')}`);
+    const value=engine.physics[name];$(name).value=value;$(`${name}-value`).textContent=t(`${value}%`);
+    $(name).setAttribute('aria-valuetext',t(`${value}%, ${name==='stiffness'?(value<35?'soft':value>70?'firm':'medium'):(value<35?'free-flowing':value>70?'thick and slow':'moderate resistance')}`));
   }
 }
 function resetPreview(){
@@ -385,8 +387,8 @@ function renderEvolution(){
 $('evolution').replaceChildren();
 for(let level=0;level<=MAX_LEVEL;level++){
   const row=document.createElement('div');row.className='evolution-item';
-  const friend=document.createElement('span');friend.className='evolution-blob';friend.style.background=colors[level];friend.textContent=engine.value(level);if(engine.value(level)>=10000)friend.style.fontSize='7px';
-  const caption=document.createElement('span');caption.textContent=level===0?'a little hello':level===MAX_LEVEL?`${engine.value(MAX_LEVEL).toLocaleString()} · keep growing`:'↓';
+  const friend=document.createElement('span');friend.className='evolution-blob';friend.style.background=colors[level];friend.textContent=t(engine.value(level));if(engine.value(level)>=10000)friend.style.fontSize='7px';
+  const caption=document.createElement('span');caption.textContent=t(level===0?'a little hello':level===MAX_LEVEL?`${engine.value(MAX_LEVEL).toLocaleString()} · keep growing`:'↓');
   row.append(friend,caption);$('evolution').append(row);
 }
 }
@@ -412,7 +414,7 @@ function drawBlob(b,alpha=1,paint=ctx,glow=0){
   ctx.fillStyle='#384031';
   for(const side of [-1,1]){ctx.beginPath();ctx.ellipse(b.x+side*r*.23,b.y-r*.12,Math.max(1.5,r*.055),Math.max(2,r*.07),0,0,Math.PI*2);ctx.fill();}
   ctx.beginPath();ctx.moveTo(b.x-r*.1,b.y+r*.04);ctx.quadraticCurveTo(b.x,b.y+r*.17,b.x+r*.1,b.y+r*.04);ctx.strokeStyle='#384031';ctx.lineWidth=Math.max(1,r*.035);ctx.lineCap='round';ctx.stroke();
-  ctx.font=`700 ${Math.max(9,r*.38)}px Manrope, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#384031cf';ctx.fillText(engine.value(b.level),b.x,b.y+r*.45);
+  ctx.font=`700 ${Math.max(9,r*.38)}px Manrope, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#384031cf';ctx.fillText(t(engine.value(b.level)),b.x,b.y+r*.45);
   ctx.restore();
 }
 const demo=[blob(3,55,388),blob(5,115,375),blob(4,185,382),blob(2,240,391),blob(1,282,393),blob(0,320,395),blob(2,75,348)];
@@ -461,8 +463,8 @@ function drawRack(){
   }
   drawRackBursts();
   engine.rack.forEach(positionChoice);
-  ctx.textAlign='center';ctx.font='600 7px "DM Sans", sans-serif';ctx.fillStyle='#9da58e';ctx.fillText(rackMotion.busy?'PREPARING…':rackGesture?.mode==='charge'?`CHARGING · ${Math.round(power*100)}%`:(engine.rules.count===3?'LIFT UP · REARRANGE':'LIFT UP · MERGE OR REARRANGE'),180,12);
-  ctx.font='600 6px "DM Sans", sans-serif';ctx.fillText(rackGesture?.mode==='charge'?'RELEASE TO SHOOT · PULL BACK UP TO CANCEL':'PULL DOWN TO CHARGE A SHOT',180,101);
+  ctx.textAlign='center';ctx.font='600 7px "DM Sans", sans-serif';ctx.fillStyle='#9da58e';ctx.fillText(t(rackMotion.busy?'PREPARING…':rackGesture?.mode==='charge'?`CHARGING · ${Math.round(power*100)}%`:(engine.rules.count===3?'LIFT UP · REARRANGE':'LIFT UP · MERGE OR REARRANGE')),180,12);
+  ctx.font='600 6px "DM Sans", sans-serif';ctx.fillText(t(rackGesture?.mode==='charge'?'RELEASE TO SHOOT · PULL BACK UP TO CANCEL':'PULL DOWN TO CHARGE A SHOT'),180,101);
 
 }
 function drawAimGuide(){
@@ -494,7 +496,7 @@ function draw(elapsed=1/60){
   ctx.beginPath();ctx.moveTo(engine.vessel.bottleLeftAt(engine.vessel.FILL_LINE)+10,engine.vessel.FILL_LINE);ctx.lineTo(WIDTH-engine.vessel.bottleLeftAt(engine.vessel.FILL_LINE)-10,engine.vessel.FILL_LINE);ctx.setLineDash([3,6]);ctx.lineWidth=1;
   ctx.strokeStyle=danger>0?'#cf725dd9':'#98a08566';ctx.stroke();ctx.setLineDash([]);
   ctx.font='600 7px "DM Sans", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillStyle=danger>0?'#cf725d':'#9fa58e';ctx.fillText(danger>0?'MAKE A LITTLE ROOM':'A LITTLE ROOM TO GROW',WIDTH/2,engine.vessel.FILL_LINE+14);
+  ctx.fillStyle=danger>0?'#cf725d':'#9fa58e';ctx.fillText(t(danger>0?'MAKE A LITTLE ROOM':'A LITTLE ROOM TO GROW'),WIDTH/2,engine.vessel.FILL_LINE+14);
   for(const b of started?engine.blobs:engine.bottleId==='classic'?demo:[]){
     const box=b.bounds,outside=box&&(box.minX<0||box.maxX>WIDTH||box.minY<0||box.maxY>HEIGHT);
     const paint=outside?dragCtx:ctx;
@@ -511,7 +513,7 @@ function draw(elapsed=1/60){
   if(started&&(!engine.over||!endedShown)){
     if((keyboardAiming||aimGesture)&&!aimCancelled)drawAimGuide();
     drawRack(elapsed);
-    if(engine.shots===0&&engine.bottleId==='classic'){ctx.font='500 10px "DM Sans", sans-serif';ctx.fillStyle='#99a08b';ctx.fillText(engine.bottleId==='classic'?'Pull a blob down, then release to shoot.':'Aim into a neck, then release to shoot.',WIDTH/2,HEIGHT*.61);ctx.fillText(engine.rules.count===3?'Lift it up to rearrange the ready row.':'Lift it up to merge or change its position.',WIDTH/2,HEIGHT*.61+17);}
+    if(engine.shots===0&&engine.bottleId==='classic'){ctx.font='500 10px "DM Sans", sans-serif';ctx.fillStyle='#99a08b';ctx.fillText(t(engine.bottleId==='classic'?'Pull a blob down, then release to shoot.':'Aim into a neck, then release to shoot.'),WIDTH/2,HEIGHT*.61);ctx.fillText(t(engine.rules.count===3?'Lift it up to rearrange the ready row.':'Lift it up to merge or change its position.'),WIDTH/2,HEIGHT*.61+17);}
   }
 }
 function resize(){
@@ -653,4 +655,5 @@ shell=createStartPage({
     save();return {round:room.round,score:engine.score,shots:engine.shots,highestTile:engine.value(engine.highestLevel),done:engine.over,paused:paused||page!=='game',blobs:engine.blobs.slice(0,90).map(b=>({level:b.level,x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10}))};
   }
 });
-updateHUD();requestAnimationFrame(frame);
+onLanguageChange(()=>{cancelAim();updateHUD();renderEvolution();if($('settings-dialog').open)resetPreview();if(!overlay.classList.contains('hidden')&&overlayCopy)showOverlay(overlayCopy);$('toast').textContent=t(lastToast);document.title=t('Squish Pocket — a little room to play');});
+mountLanguagePicker();updateHUD();requestAnimationFrame(frame);

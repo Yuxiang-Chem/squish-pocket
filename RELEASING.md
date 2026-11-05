@@ -391,3 +391,38 @@ Promoted that exact candidate through the release guard to official
 `595ca74b-1ce1-4611-90c3-ad9a62544064`. All 32 assets and both achievement APIs
 matched source. No migration was pending. Lab remains test-only; scores and
 achievement history are not reset by this adjustment.
+
+## Bilingual 团团 heading, animated selectors and holder note — 2026-11-05
+
+Lab-free assets v84 were verified on test as
+`2f2f5165-362d-408d-a92e-1f4c6079cfbe` and promoted through the release guard
+to official `d0828357-46f0-4db8-8bc9-9b1d6bd5a0c6`. Source digest:
+`4cc185663e3d99c1a8288eed5d96a9f3d81f5e544e7405d699b6951aa22e1a0f`.
+All 239 automated checks passed (197 game/locale, 37 backend/release, five
+Worker runtime); all 34 assets and both achievement APIs matched. No migrations
+were pending. Official physics, vessel geometry, record epochs, API and room
+backend remain identical to the previous approved official baseline.
+
+Chinese uses 团团 throughout. The restored heading keeps “Find your kind of
+squish” below the Chinese title. Both home and achievement mode selectors show
+two or three blobs merging, without visible text labels, with keyboard/screen
+reader names and reduced-motion alternatives. The congratulations page explains
+that only the current record holder can message the creator and invites a fun
+message in both languages. The larger Back/Achievements controls, 中/En toggle
+and shared multiplayer in-card start flow are included. Lab's entry, controller
+and simulation assets are excluded from official; dry/water Three-neck vessels
+remain regular game bottles.
+
+Local Chromium/WebKit passed both real two-player rule flows, animation phases,
+phone/desktop sizes, language switching, all eight Top 5 boards and the holder
+note/ownership loss state. Live-test checks passed with remote writes mocked
+and no messages sent. Source, receipts and audit logs are archived privately
+under `.releases/animated-picker-2026-11-05/`.
+
+Live official Chromium/WebKit checks also passed both language headings,
+animation phases, reduced motion, all four selectors, both rule settings and
+Lab asset exclusion. The bilingual holder note fits a 320px phone; ownership
+loss disables messaging. All QA writes were mocked and no messages were sent.
+Public before/after audits preserved every bottle record, achievement epoch
+and announcement deadline: Two Combine remained 12 players / 7 milestone
+creations, and Three Combine remained 2 players / 2 creations.

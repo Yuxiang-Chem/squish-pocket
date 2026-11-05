@@ -357,3 +357,18 @@ Published on 2026-11-04 as Worker version `14512392-e5ea-4a57-ab1f-1c79202f6f7b`
 - Official `595ca74b-1ce1-4611-90c3-ad9a62544064` serves the exact verified
   v75 source, with all 32 assets and both APIs matching. No migration or
   achievement reset was included. Two Combine's base sizes remain unchanged.
+
+
+### Animated combine controls and bilingual holder note — 2026-11-05
+
+`browser_animated_picker_checks.py` checks Chinese/English headings, two/three
+incoming blobs and the merged result, text-free selectors, keyboard selection,
+no reload, achievement mode controls, reduced motion, layouts and Lab absence
+in the official build. Use `SQUISH_ALLOW_LAB=1` for the development test site.
+`browser_champion_message_checks.py` mocks ownership and confirms the bilingual
+note and messaging lock after ownership loss; it sends no messages. Official
+candidate passed 239 automated checks and the local real multiplayer checks.
+
+Live official Chromium/WebKit passed the animated-picker and champion-note
+suites. Records, counters and announcement dates matched pre-release API
+summaries. The official release excludes Lab; development/test retains it.

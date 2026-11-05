@@ -1,8 +1,9 @@
-import {renderThreeAnnouncement} from './announcement.js?v=75';
-import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=75';
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=75';
-import {BOTTLES} from './bottles.js?v=75';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=75';
+import {t,onLanguageChange,translateTree,getLanguage} from './i18n.js?v=84';
+import {renderThreeAnnouncement} from './announcement.js?v=84';
+import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=84';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=84';
+import {BOTTLES} from './bottles.js?v=84';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=84';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
@@ -225,24 +226,25 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     panel.innerHTML = `<h3 class="achievement-bottle-title"><canvas width="120" height="140" aria-hidden="true"></canvas>${vessel.name}<span>${id==='lab-flask'?'Fresh world board · new rounds count':'Its own little hall of fame'}</span></h3>
       <div class="achievement-card achievement-world"><span class="label">WORLD HIGH SCORE</span><strong data-record>—</strong><span data-holder>A little room for a new record</span><span>Biggest merge: <b data-global-tile>—</b></span><button type="button" data-celebrate class="text-button hidden">Your champion page →</button></div>
       <div class="achievement-personal"><span data-milestone>Your next little milestone: 2048</span><div><span>YOUR BIGGEST MERGE <b data-personal-tile>2</b></span><span>YOUR BEST SCORE <b data-personal-score>0</b></span></div></div>`;
-    pages.append(panel);
+    pages.append(panel);translateTree(panel);
     panel.querySelector('[data-celebrate]').onclick = () => showChampion(id,viewTracker);
     const context = panel.querySelector('canvas').getContext('2d');context.scale(1/3, 1/3);vessel.drawBottleBack(context);vessel.drawBottleFront(context);
   }
   for(const id of pageIds){
     const section=document.createElement('section'),heading=document.createElement('h4'),list=document.createElement('ol');
-    section.className='achievement-leaders';heading.textContent='Top 5';list.dataset.leaderboard=id;
-    list.setAttribute('aria-label',`${id==='all'?'All bottles':BOTTLES[id].name} top five scores`);list.setAttribute('role','list');
+    section.className='achievement-leaders';heading.textContent=t('Top 5');list.dataset.leaderboard=id;
+    list.setAttribute('aria-label',t(`${id==='all'?'All bottles':BOTTLES[id].name} top five scores`));list.setAttribute('role','list');
     section.append(heading,list);const panel=$(`achievement-page-${id}`);panel.insertBefore(section,panel.querySelector('.achievement-personal'));
   }
   function renderLeaders(id,board){
     const list=pages.querySelector(`[data-leaderboard="${id}"]`);
+    list.setAttribute('aria-label',t(`${BOTTLES[id].name} top five scores`));
     const rows=Array.isArray(board?.leaderboard)?board.leaderboard:board?.record?[board.record]:[];
     list.replaceChildren(...Array.from({length:5},(_,i)=>{
       const row=rows[i],item=document.createElement('li'),rank=document.createElement('span'),name=document.createElement('span'),score=document.createElement('strong');
-      rank.className='leader-rank';rank.textContent=String(i+1);rank.setAttribute('aria-hidden','true');
-      name.className='leader-name';name.textContent=row?`${row.name}${row.isYou?' · you':''}`:board?'Open spot':'Loading…';
-      score.textContent=row?row.score.toLocaleString():'—';item.classList.toggle('leader-you',!!row?.isYou);
+      rank.className='leader-rank';rank.textContent=t(String(i+1));rank.setAttribute('aria-hidden','true');
+      name.className='leader-name';name.dataset.i18nSkip='';name.textContent=row?`${row.name}${row.isYou?t(' · you'):''}`:t(board?'Open spot':'Loading…');
+      score.textContent=t(row?row.score.toLocaleString():'—');item.classList.toggle('leader-you',!!row?.isYou);
       item.append(rank,name,score);return item;
     }));
   }
@@ -254,7 +256,7 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
       $(`achievement-page-${id}`).inert = i !== index;
     });
     $('achievement-previous').disabled = index === 0;$('achievement-next').disabled = index === pageIds.length - 1;
-    $('achievement-page-number').textContent = `${index + 1} / ${pageIds.length}`;
+    $('achievement-page-number').textContent = t(`${index + 1} / ${pageIds.length}`);
     const activeTab=$(`achievement-tab-${pageIds[index]}`),nav=activeTab.parentElement;
     if(activeTab.offsetLeft<nav.scrollLeft)nav.scrollLeft=activeTab.offsetLeft;
     else if(activeTab.offsetLeft+activeTab.offsetWidth>nav.scrollLeft+nav.clientWidth)nav.scrollLeft=activeTab.offsetLeft+activeTab.offsetWidth-nav.clientWidth;
@@ -313,7 +315,7 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     if(sending)return;
     viewTracker=trackerFor(mode);
     $('achievement-name').value=boardName(viewTracker.profile.name);
-    $('record-message').value='';$('record-reply').value='';$('record-message-status').textContent='';
+    $('record-message').value='';$('record-reply').value='';$('record-message-status').textContent=t('');
     render();selectPage(selectedPage,false);await viewTracker.sync(true);
   }
   for(const button of dialog.querySelectorAll('[data-achievement-mode]'))button.onclick=()=>{void selectMode(button.dataset.achievementMode);};
@@ -321,7 +323,7 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     const s = viewTracker.summary, select = $('record-bottle');
     const eligible = pageIds.filter(id => canMessage(s, id)), requested = pageIds[selectedPage], previous = select.value;
     if([...select.options].map(option => option.value).join('|') !== eligible.join('|')){
-      select.replaceChildren(...eligible.map(id => {const option = document.createElement('option');option.value = id;option.textContent = id === 'all' ? 'All bottles' : BOTTLES[id].name;return option;}));
+      select.replaceChildren(...eligible.map(id => {const option = document.createElement('option');option.value = id;option.textContent = t(id === 'all' ? 'All bottles' : BOTTLES[id].name);return option;}));
     }
     select.value = preferPage && eligible.includes(requested) ? requested : eligible.includes(previous) ? previous : eligible.includes(requested) ? requested : eligible[0] ?? '';
     const holder = eligible.length > 0 && !viewTracker.error;
@@ -329,7 +331,7 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     $('record-message-locked').classList.toggle('hidden', holder);
     $('record-send').disabled = sending || !holder || !s?.emailReady;
     select.disabled = sending;
-    $('record-email-note').textContent = s?.emailReady ? 'Your message goes to the creator’s inbox. One message per record each day (UTC); a reply email is optional.' : 'The creator’s inbox is being connected. You can keep your message here until it’s ready.';
+    $('record-email-note').textContent = t(s?.emailReady ? 'Your message goes to the creator’s inbox. One message per record each day (UTC); a reply email is optional.' : 'The creator’s inbox is being connected. You can keep your message here until it’s ready.');
   }
   function renderChampion() {
     if(!celebrating)return;
@@ -340,10 +342,10 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     if(holder && latestScore > (owner.profile.recordCelebrations[bottle] ?? 0)){
       owner.profile.recordCelebrations[bottle] = latestScore;owner.storageAvailable = owner.persist();
     }
-    $('champion-title').textContent = holder ? 'You’re number one!' : 'A record to remember.';
-    $('champion-description').textContent = owner.error ? 'Your record is saved. Reconnect to check the latest standings and email the creator.' : holder ? 'A new world record, made one little merge at a time.' : 'Another player now holds this bottle’s record. Your achievement is still worth celebrating.';
-    $('champion-note').textContent = owner.error ? 'One great round is always worth celebrating.' : holder ? 'Your bottle has a new champion. That’s you.' : 'Keep squishing. Your next great round is waiting.';
-    $('champion-score').textContent = latestScore.toLocaleString();
+    $('champion-title').textContent = t(holder ? 'You’re number one!' : 'A record to remember.');
+    $('champion-description').textContent = t(owner.error ? 'Your record is saved. Reconnect to check the latest standings and email the creator.' : holder ? 'A new world record, made one little merge at a time.' : 'Another player now holds this bottle’s record. Your achievement is still worth celebrating.');
+    $('champion-note').textContent = t(owner.error ? 'One great round is always worth celebrating.' : holder ? 'Your bottle has a new champion. That’s you.' : 'Keep squishing. Your next great round is waiting.');
+    $('champion-score').textContent = t(latestScore.toLocaleString());
     $('champion-email').disabled = !holder;
     $('champion-name-form').classList.toggle('hidden',!!boardName(owner.profile.name));
   }
@@ -353,8 +355,8 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     if(document.querySelector('dialog[open]'))return;
     const vessel = BOTTLES[bottle], score = owner.summary.bottles[bottle].record.score;
     celebrating = {bottle, score,tracker:owner};cancelAim();
-    $('champion-name').value=boardName(owner.profile.name);$('champion-name-status').textContent='';
-    $('champion-bottle-name').textContent = owner.rule.name+' · '+vessel.name;
+    $('champion-name').value=boardName(owner.profile.name);$('champion-name-status').textContent=t('');
+    $('champion-bottle-name').textContent = t(owner.rule.name+' · '+vessel.name);
     const context = $('champion-bottle-preview').getContext('2d');context.setTransform(.5,0,0,.5,0,0);context.clearRect(0,0,360,420);vessel.drawBottleBack(context);vessel.drawBottleFront(context);
     owner.profile.recordCelebrations[bottle] = score;owner.storageAvailable = owner.persist();
     renderChampion();celebration.showModal();
@@ -379,40 +381,40 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
   const currentRoundRecords = () => roundRecords(tracker.profile, tracker.summary, getEngine());
   const renderRoundStats = () => {
     const engine = getEngine(), records = currentRoundRecords(), name = BOTTLES[engine.bottleId].name;
-    $('score').textContent = engine.score.toLocaleString();
-    $('best').textContent = records.personalBest.toLocaleString();
-    $('best').title = `Your best score · ${name}`;
-    $('world-record').textContent = records.worldBest === null ? '—' : records.worldBest.toLocaleString();
-    $('world-record').title = `${name} · ${tracker.error ? 'Last loaded world record. Reconnect to refresh.' : 'Highest shared score'}`;
-    $('round-stats').setAttribute('aria-label', `${name} round results`);
-    $('round-bottle').textContent = name;
+    $('score').textContent = t(engine.score.toLocaleString());
+    $('best').textContent = t(records.personalBest.toLocaleString());
+    $('best').title = t(`Your best score · ${name}`);
+    $('world-record').textContent = t(records.worldBest === null ? '—' : records.worldBest.toLocaleString());
+    $('world-record').title = t(`${name} · ${tracker.error ? 'Last loaded world record. Reconnect to refresh.' : 'Highest shared score'}`);
+    $('round-stats').setAttribute('aria-label', t(`${name} round results`));
+    $('round-bottle').textContent = t(name);
   };
   function render() {
     const p = viewTracker.profile, s = viewTracker.summary, rule=viewTracker.rule, milestone=rule.id==='three'?'2,187':'2048';
-    for(const id of pageIds)pages.querySelector(`[data-leaderboard="${id}"]`).setAttribute('aria-label',`${rule.name} · ${id==='all'?'All bottles':BOTTLES[id].name} top five scores`);
+    for(const id of pageIds)pages.querySelector(`[data-leaderboard="${id}"]`).setAttribute('aria-label',t(`${rule.name} · ${id==='all'?'All bottles':BOTTLES[id].name} top five scores`));
     dialog.querySelectorAll('[data-achievement-mode]').forEach(button=>{button.setAttribute('aria-pressed',String(button.dataset.achievementMode===rule.id));button.disabled=sending;});
     renderThreeAnnouncement($('achievement-season-note'),rule.id,s?.announcement);
-    dialog.querySelector('.achievement-badge').textContent=String(rule.milestone);
-    dialog.querySelector('.achievement-intro').textContent=rule.name+' · Every '+milestone+' starts with a tiny '+(rule.id==='three'?'one.':'two.');
-    dialog.querySelector('.achievement-footnote').textContent=rule.name+' keeps its own name, best scores and saved rounds in this browser. The player counter counts each player once. The blob total counts every new '+milestone+' merge in the bottle or ready row from the tracking date. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.'+(rule.id==='three'?' Only fresh rounds started after the restart count toward these achievements.':'');
-    $('achievement-count').textContent = s ? (s.reachedMilestone??s.reached2048).toLocaleString() : '—';
-    $('achievement-count-label').textContent = `${(s?.reachedMilestone??s?.reached2048)===1?'player has':'players have'} reached ${milestone}`;
-    $('achievement-total').textContent = Number.isSafeInteger(s?.totalMilestones)?s.totalMilestones.toLocaleString():'—';
-    $('achievement-total-label').textContent = `total ${milestone} blobs made`;
-    $('achievement-total-note').textContent = s?.milestoneTrackingSince ? 'Every merge counts · tracking since '+new Date(s.milestoneTrackingSince).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : 'Every merge counts · tracking starts with this update';
+    dialog.querySelector('.achievement-badge').textContent=t(String(rule.milestone));
+    dialog.querySelector('.achievement-intro').textContent=t(rule.name+' · Every '+milestone+' starts with a tiny '+(rule.id==='three'?'one.':'two.'));
+    dialog.querySelector('.achievement-footnote').textContent=t(rule.name+' keeps its own name, best scores and saved rounds in this browser. Reaching '+milestone+' in the bottle or ready row counts once across rounds. Clearing browser data or switching devices creates a new player. Shared scores are reported by players.')+(rule.id==='three'?' '+t('Only fresh rounds started after the restart count toward these achievements.'):'');
+    $('achievement-count').textContent = t(s ? (s.reachedMilestone??s.reached2048).toLocaleString() : '—');
+    $('achievement-count-label').textContent = t(`${(s?.reachedMilestone??s?.reached2048)===1?'player has':'players have'} reached ${milestone}`);
+    $('achievement-total').textContent = t(Number.isSafeInteger(s?.totalMilestones)?s.totalMilestones.toLocaleString():'—');
+    $('achievement-total-label').textContent = t(`total ${milestone} blobs made`);
+    $('achievement-total-note').textContent = t(s?.milestoneTrackingSince ? 'Every merge counts · tracking since '+new Date(s.milestoneTrackingSince).toLocaleDateString(getLanguage(),{month:'short',day:'numeric',year:'numeric'}) : 'Every merge counts · tracking starts with this update');
     renderRoundStats();
     for (const id of Object.keys(BOTTLES)) {
       const panel = $(`achievement-page-${id}`), shared = s?.bottles?.[id], personal = p.bottles[id] ?? {score: 0, highestTile:rule.start};
       renderLeaders(id,shared);
-      panel.querySelector('[data-record]').textContent = shared ? (shared.record ? shared.record.score.toLocaleString() : 'Be the first') : '—';
-      panel.querySelector('[data-holder]').textContent = shared?.record ? `${shared.record.name} · highest score` : 'A little room for a new record';
-      panel.querySelector('[data-global-tile]').textContent = shared ? shared.highestTile.toLocaleString() : '—';
-      panel.querySelector('[data-personal-score]').textContent = personal.score.toLocaleString();
-      panel.querySelector('[data-personal-tile]').textContent = personal.highestTile.toLocaleString();
-      panel.querySelector('[data-milestone]').textContent = personal.highestTile >= rule.milestone ? `${milestone} club · you made it!` : `Your next little milestone: ${milestone}`;
+      panel.querySelector('[data-record]').textContent = t(shared ? (shared.record ? shared.record.score.toLocaleString() : 'Be the first') : '—');
+      panel.querySelector('[data-holder]').textContent = t(shared?.record ? `${shared.record.name} · highest score` : 'A little room for a new record');
+      panel.querySelector('[data-global-tile]').textContent = t(shared ? shared.highestTile.toLocaleString() : '—');
+      panel.querySelector('[data-personal-score]').textContent = t(personal.score.toLocaleString());
+      panel.querySelector('[data-personal-tile]').textContent = t(personal.highestTile.toLocaleString());
+      panel.querySelector('[data-milestone]').textContent = t(personal.highestTile >= rule.milestone ? `${milestone} club · you made it!` : `Your next little milestone: ${milestone}`);
       panel.querySelector('[data-celebrate]').classList.toggle('hidden', !canMessage(s, id) || !!viewTracker.error);
     }
-    $('achievement-status').textContent = viewTracker.error || (s ? rule.name+' records are up to date.' : 'Connecting to shared records…');
+    $('achievement-status').textContent = t(viewTracker.error || (s ? rule.name+' records are up to date.' : 'Connecting to shared records…'));
     renderMessageEligibility();renderChampion();
   }
   $('achievements').onclick = async () => {
@@ -420,34 +422,35 @@ export function connectAchievements({getEngine, getBest, canCelebrate = () => tr
     $('achievement-name').value = boardName(tracker.profile.name);
     dialog.showModal();selectPage(Math.max(0, pageIds.indexOf(getEngine().bottleId)), false);await tracker.sync(true);
   };
-  $('achievement-refresh').onclick = async () => { $('achievement-status').textContent = 'Refreshing shared records…'; await viewTracker.sync(true); };
+  $('achievement-refresh').onclick = async () => { $('achievement-status').textContent = t('Refreshing shared records…'); await viewTracker.sync(true); };
   for(const id of ['achievement-name','champion-name']){
     const input=$(id),selectName=()=>input.setSelectionRange(0,input.value.length);
     input.addEventListener('focus',selectName);input.addEventListener('click',()=>{selectName();setTimeout(()=>{if(document.activeElement===input)selectName();},0);});
   }
   $('champion-name-form').onsubmit=async event=>{
     event.preventDefault();const button=$('champion-name-form').querySelector('button');button.disabled=true;
-    $('champion-name-status').textContent='Saving your name…';
+    $('champion-name-status').textContent=t('Saving your name…');
     const owner=celebrating?.tracker??tracker;
     try{await owner.rename($('champion-name').value);$('achievement-name').value=boardName(viewTracker.profile.name);
-      $('champion-name-status').textContent=owner.error|| (boardName(owner.profile.name)?'Your name is on the board.':'You can keep playing without a name.');
+      $('champion-name-status').textContent=t(owner.error|| (boardName(owner.profile.name)?'Your name is on the board.':'You can keep playing without a name.'));
     }finally{button.disabled=false;}
   };
   $('achievement-name-form').onsubmit = async event => {
-    event.preventDefault(); $('achievement-status').textContent = 'Saving your name…';
+    event.preventDefault(); $('achievement-status').textContent = t('Saving your name…');
     await viewTracker.rename($('achievement-name').value);
   };
   $('record-message-form').onsubmit = async event => {
     event.preventDefault(); const button = $('record-send'); if (button.disabled) return;
     const owner=viewTracker;
-    sending = true; render();button.disabled = true; $('record-message-status').textContent = 'Sending your message…';
+    sending = true; render();button.disabled = true; $('record-message-status').textContent = t('Sending your message…');
     try {
       await owner.send($('record-message').value, $('record-reply').value, $('record-bottle').value);
-      $('record-message-status').textContent = 'Message sent! Thanks for sharing your little victory.';
+      $('record-message-status').textContent = t('Message sent! Thanks for sharing your little victory.');
       $('record-message').value = ''; $('record-reply').value = '';
-    } catch (error) { $('record-message-status').textContent = error.message; }
+    } catch (error) { $('record-message-status').textContent = t(error.message); }
     finally { sending = false; render(); }
   };
+  onLanguageChange(()=>{for(const heading of pages.querySelectorAll('.achievement-leaders h4'))heading.textContent=t('Top 5');render();});
   updatePage(0);render();
   return {
     get profile(){return tracker.profile;},
