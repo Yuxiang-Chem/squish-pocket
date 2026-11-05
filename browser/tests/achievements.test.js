@@ -299,3 +299,19 @@ test('Three Combine restart clears every personal board once and excludes old sa
  values.set('squish-pocket-achievements-v1',JSON.stringify({...old,mergeMode:'two',score:4096,highestTile:2048,bottles:{classic:{score:4096,highestTile:2048}},flaskRecord:{epoch:2,score:0,highestTile:2}}));
  assert.equal(loadProfile(storage,'two').score,4096);
 });
+
+
+test('official water-conical personal reset excludes old saves but preserves other bottles, overall best and Three Combine',async t=>{
+ const old=Object.getOwnPropertyDescriptor(globalThis,'location');Object.defineProperty(globalThis,'location',{configurable:true,writable:true,value:{hostname:'squish.chemisgreat.online'}});t.after(()=>old?Object.defineProperty(globalThis,'location',old):delete globalThis.location);
+ const id='conical-flask-water',key='squish-pocket-achievements-v1';
+ const profile={id:crypto.randomUUID(),token:crypto.randomUUID(),name:'Friend',mergeMode:'two',score:800,highestTile:2048,bottles:{[id]:{score:800,highestTile:2048},'conical-flask':{score:400,highestTile:128}},recordCelebrations:{[id]:800}};
+ const oldEngine=new Engine(42,id);delete oldEngine.waterConicalRecordEpoch;oldEngine.score=800;oldEngine.highestLevel=10;
+ const values=new Map([[key,JSON.stringify(profile)],['squish-pocket-v1:'+id,JSON.stringify({version:1,engine:oldEngine})]]),storage={getItem:k=>values.get(k)};
+ const loaded=loadProfile(storage,'two');assert.equal(loaded.waterConicalRecordEpoch,2);assert.equal(loaded.bottles[id],undefined);assert.equal(loaded.recordCelebrations[id],undefined);assert.equal(loaded.score,800);assert.equal(loaded.highestTile,2048);assert.equal(loaded.bottles['conical-flask'].score,400);
+ const restored=Engine.restore(JSON.parse(JSON.stringify(oldEngine)));assert.equal(restored.waterConicalRecordEpoch,1);assert.equal(restored.score,800);
+ captureProgress(loaded,restored);assert.equal(loaded.bottles[id],undefined);assert.equal(roundRecords(loaded,null,restored).personalBest,0);
+ const fresh=new Engine(7,id);assert.equal(fresh.waterConicalRecordEpoch,2);fresh.score=40;fresh.highestLevel=3;captureProgress(loaded,fresh);assert.equal(loaded.bottles[id].score,40);assert.equal(loaded.bottles[id].highestTile,16);
+ captureProgress(loaded,restored);assert.equal(loaded.bottles[id].score,40);values.set(key,JSON.stringify(loaded));assert.equal(loadProfile(storage,'two').bottles[id].score,40);
+ const three={...profile,mergeMode:'three',achievementEpoch:2,score:81,highestTile:27,bottles:{[id]:{score:81,highestTile:27}}};values.set(key+':three',JSON.stringify(three));assert.equal(loadProfile(storage,'three').bottles[id].score,81);
+ globalThis.location={hostname:'squish-test.chemisgreat.online'};values.set(key,JSON.stringify(profile));assert.equal(loadProfile(storage,'two').bottles[id].score,800);assert.equal(new Engine(7,id).waterConicalRecordEpoch,1);
+});

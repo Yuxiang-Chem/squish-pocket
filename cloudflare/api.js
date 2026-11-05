@@ -1,6 +1,6 @@
 import {ruleFor,validValue} from '../browser/dist/merge-rules.js';
 import {roomsAPI} from './rooms-api.js';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor} from '../browser/dist/record-epoch.js';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,WATER_CONICAL_RECORD_EPOCH,waterConicalResetActive} from '../browser/dist/record-epoch.js';
 import {MILESTONE_BATCH_SIZE,validMilestoneRun,validMilestoneCount} from '../browser/dist/milestone-totals.js';
 const RECIPIENT = 'chem.xjtlu@gmail.com';
 const RECORD = 'SELECT players.* FROM players JOIN world_record ON world_record.player_id = players.id WHERE world_record.slot = 1';
@@ -10,6 +10,11 @@ const validScoreFor = (score,rule) => Number.isSafeInteger(score) && score >= 0 
 const validTileFor=(tile,rule)=>validValue(tile,rule.id);
 function scopedRecords(db){
   return {prepare(sql){return db.prepare(sql.replace(/\b(players|world_record|bottle_scores|bottle_records|record_messages|bottle_messages|flask_current_scores)\b/g,name=>'three_v'+THREE_RECORD_EPOCH+'_'+name));},batch(statements){return db.batch(statements);}};
+}
+// Read the fresh official water-conical season through a union view. Legacy
+// Workers can only write the old table; those scores cannot refill this board.
+function waterConicalRecords(db){
+  return {prepare(sql){return db.prepare(/^\s*SELECT\b/i.test(sql)?sql.replace(/\bbottle_scores\b/g,'current_water_conical_bottle_scores'):sql);},batch(statements){return db.batch(statements);}};
 }
 const json = (body, status = 200) => Response.json(body, {status, headers: {
   'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'
@@ -84,6 +89,7 @@ async function summary(env, playerId) {
       leaderboard:publicLeaders(results[10+index].results,playerId),
       isRecordHolder: !!record && record.player_id === playerId,
       highestTile: (id === 'lab-flask' ? results[7].results[0]?.tile : results[5].results.find(row => row.bottle_id === id)?.tile) ?? rule.start,
+      ...(env.waterConicalReset&&id==='conical-flask-water'?{recordEpoch:WATER_CONICAL_RECORD_EPOCH}:{}),
       ...(id === 'lab-flask' ? {recordEpoch: FLASK_RECORD_EPOCH,
         ...(playerId ? {recordPersonal: results[8].results[0] ?? {score: 0, highestTile:rule.start}} : {})} : {}),
       ...(playerId ? {personal: {score: id==='lab-flask'?(results[8].results[0]?.score??0):(personal?.score??0), highestTile: personal?.highestTile??rule.start}} : {})}];
@@ -129,6 +135,9 @@ async function submit(request, env) {
   if (fresh !== undefined && (
       !validTile(fresh.highestTile) || fresh.score > (data.bottles?.['lab-flask']?.score ?? -1) ||
       fresh.highestTile > (data.bottles?.['lab-flask']?.highestTile ?? 0))) fail('Invalid flask record.', 400);
+  const waterConical=env.waterConicalReset?data.waterConicalRecord:undefined;
+  if(waterConical!==undefined&&(!waterConical||waterConical.epoch!==WATER_CONICAL_RECORD_EPOCH||!validScore(waterConical.score)||!validTile(waterConical.highestTile)||
+      waterConical.score>(data.bottles?.['conical-flask-water']?.score??-1)||waterConical.highestTile>(data.bottles?.['conical-flask-water']?.highestTile??0)))fail('Invalid water conical record.',400);
   const now = Date.now();
   // The token predicate protects existing identities. MAX preserves achievements
   // across new rounds, retries, and concurrent tabs. Ties keep the first holder.
@@ -144,7 +153,7 @@ async function submit(request, env) {
     INSERT INTO milestone_runs (merge_mode,achievement_epoch,player_id,run_id,merge_count) VALUES (?,?,?,?,?)
     ON CONFLICT(merge_mode,achievement_epoch,player_id,run_id) DO UPDATE SET merge_count=MAX(milestone_runs.merge_count,excluded.merge_count)`)
     .bind(rule.id,achievementEpochFor(rule.id),id,run,count)));
-  const bottleStatements = Object.entries(data.bottles ?? {}).map(([bottleId, record]) => env.ACHIEVEMENTS.prepare(`
+  const bottleStatements = Object.entries(data.bottles ?? {}).filter(([id])=>!env.waterConicalReset||id!=='conical-flask-water').map(([bottleId, record]) => env.ACHIEVEMENTS.prepare(`
     INSERT INTO bottle_scores (player_id, bottle_id, best_score, highest_tile, best_at) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(player_id, bottle_id) DO UPDATE SET
       best_at = CASE WHEN excluded.best_score > bottle_scores.best_score THEN excluded.best_at ELSE bottle_scores.best_at END,
@@ -158,6 +167,11 @@ async function submit(request, env) {
       best_score = MAX(flask_current_scores.best_score,excluded.best_score),
       highest_tile = MAX(flask_current_scores.highest_tile,excluded.highest_tile)`)
     .bind(id,fresh.score,fresh.highestTile,now).run();
+  if(waterConical)await env.ACHIEVEMENTS.prepare(`INSERT INTO water_conical_current_scores (player_id,best_score,highest_tile,best_at)
+    VALUES (?,?,?,?) ON CONFLICT(player_id) DO UPDATE SET
+      best_at=CASE WHEN excluded.best_score>water_conical_current_scores.best_score THEN excluded.best_at ELSE water_conical_current_scores.best_at END,
+      best_score=MAX(water_conical_current_scores.best_score,excluded.best_score),highest_tile=MAX(water_conical_current_scores.highest_tile,excluded.highest_tile)`)
+    .bind(id,waterConical.score,waterConical.highestTile,now).run();
   return json(await summary(env, id));
 }
 
@@ -219,7 +233,7 @@ export default {
       if (url.pathname==='/api/rooms'||url.pathname.startsWith('/api/rooms/')) return await roomsAPI(request,env,body);
       if (!env.ACHIEVEMENTS) fail('Shared achievements are not available yet.', 503);
       const mode=url.searchParams.get('merge')??'two';if(!['two','three'].includes(mode))fail('Choose a valid merge mode.',400);
-      const rule=ruleFor(mode);env={...env,mergeRule:rule,...(rule.count===3?{ACHIEVEMENTS:scopedRecords(env.ACHIEVEMENTS)}:{})};
+      const rule=ruleFor(mode),waterConicalReset=waterConicalResetActive(rule.id,url.hostname);env={...env,mergeRule:rule,waterConicalReset,ACHIEVEMENTS:rule.count===3?scopedRecords(env.ACHIEVEMENTS):waterConicalReset?waterConicalRecords(env.ACHIEVEMENTS):env.ACHIEVEMENTS};
       if (url.pathname === '/api/achievements') {
         if (request.method === 'GET') return json(await summary(env));
         if (request.method === 'POST') return await submit(request, env);

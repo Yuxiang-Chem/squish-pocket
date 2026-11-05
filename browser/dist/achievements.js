@@ -1,9 +1,9 @@
-import {t,onLanguageChange,translateTree,getLanguage} from './i18n.js?v=89';
-import {renderThreeAnnouncement} from './announcement.js?v=89';
-import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=89';
-import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=89';
-import {BOTTLES} from './bottles.js?v=89';
-import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible} from './record-epoch.js?v=89';
+import {t,onLanguageChange,translateTree,getLanguage} from './i18n.js?v=91';
+import {renderThreeAnnouncement} from './announcement.js?v=91';
+import {MILESTONE_BATCH_SIZE,mergeMilestoneRuns,pendingMilestoneRuns} from './milestone-totals.js?v=91';
+import {CURRENT_RULE,ruleFor,valueFor,validValue,profileKeyFor,saveKeyFor} from './merge-rules.js?v=91';
+import {BOTTLES} from './bottles.js?v=91';
+import {FLASK_RECORD_EPOCH,THREE_RECORD_EPOCH,achievementEpochFor,recordEligible,WATER_CONICAL_RECORD_EPOCH,waterConicalResetActive,waterConicalRecordEligible} from './record-epoch.js?v=91';
 const DEFAULT_NAME='A squishy friend';
 export const boardName=name=>typeof name==='string'&&name.trim()!==DEFAULT_NAME?name.trim():'';
 const validId = value => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
@@ -52,6 +52,12 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
     if(profile.bottles['lab-flask'])profile.bottles['lab-flask'].score=0;
   }
   mergeFlaskRecord(profile);
+  if(waterConicalResetActive(rule.id)){
+    if(profile.waterConicalRecordEpoch!==WATER_CONICAL_RECORD_EPOCH){
+      delete profile.bottles['conical-flask-water'];delete profile.recordCelebrations['conical-flask-water'];
+    }
+    profile.waterConicalRecordEpoch=WATER_CONICAL_RECORD_EPOCH;
+  }
   // Older overall records have no vessel attribution. Recover only scores
   // belonging to an actual saved round, never its shared all-bottle "best".
   for (const id of Object.keys(BOTTLES)) {
@@ -62,6 +68,7 @@ export function loadProfile(storage = localStorage,mode=CURRENT_RULE.id) {
       mergeMilestoneRuns(profile.milestoneRuns,{[engine.milestoneRun]:engine.milestoneCount});
       const levels = [...(engine.blobs ?? []), ...(engine.rack ?? [])].map(b => b.level).filter(n => Number.isInteger(n) && n >= 0 && n <= 11);
       const highestTile = valueFor(Math.max(0,engine.highestLevel??0,...levels),rule.id);
+      if(!waterConicalRecordEligible(engine))continue;
       const eligible=id!=='lab-flask'||engine.recordEpoch===FLASK_RECORD_EPOCH;
       mergeRecords(profile, {[id]: {score: eligible?engine.score:0, highestTile}});
       if(id==='lab-flask'&&engine.recordEpoch===FLASK_RECORD_EPOCH)mergeFlaskRecord(profile,{epoch:FLASK_RECORD_EPOCH,score:engine.score,highestTile});
@@ -78,11 +85,12 @@ export function captureProgress(profile, engine, personalBest = engine.score) {
   const score = Math.max(profile.score, engine.score, personalBest);
   const highestTile = Math.max(profile.highestTile, valueFor(engine.highestLevel,engine.mergeMode??'two'));
   const previous = profile.bottles?.[engine.bottleId];
-  const bottleScore=engine.bottleId==='lab-flask'&&engine.recordEpoch!==FLASK_RECORD_EPOCH?0:engine.score;
+  const bottleEligible=waterConicalRecordEligible(engine);
+  const bottleScore=!bottleEligible||engine.bottleId==='lab-flask'&&engine.recordEpoch!==FLASK_RECORD_EPOCH?0:engine.score;
   const changed = score !== profile.score || highestTile !== profile.highestTile ||
     !previous || bottleScore > previous.score || valueFor(engine.highestLevel,engine.mergeMode??'two') > previous.highestTile;
   profile.score = score; profile.highestTile = highestTile;
-  if (Object.hasOwn(BOTTLES, engine.bottleId)) mergeRecords(profile, {[engine.bottleId]: {score: bottleScore, highestTile: valueFor(engine.highestLevel,engine.mergeMode??'two')}});
+  if (bottleEligible&&Object.hasOwn(BOTTLES, engine.bottleId)) mergeRecords(profile, {[engine.bottleId]: {score: bottleScore, highestTile: valueFor(engine.highestLevel,engine.mergeMode??'two')}});
   const fresh=engine.bottleId==='lab-flask'&&engine.recordEpoch===FLASK_RECORD_EPOCH&&
     mergeFlaskRecord(profile,{epoch:FLASK_RECORD_EPOCH,score:engine.score,highestTile:valueFor(engine.highestLevel,engine.mergeMode??'two')});
   return changed||fresh||milestoneChanged;
@@ -92,7 +100,7 @@ export function roundRecords(profile, summary, engine) {
   const shared = summary?.bottles?.[engine.bottleId];
   const personal=engine.bottleId==='lab-flask'&&shared?.recordEpoch!==undefined&&shared.recordEpoch!==FLASK_RECORD_EPOCH?0:shared?.personal?.score??0;
   return {
-    personalBest: Math.max(!recordEligible(engine)?0:engine.bottleId==='lab-flask'&&engine.recordEpoch!==FLASK_RECORD_EPOCH?0:engine.score, profile.bottles?.[engine.bottleId]?.score ?? 0, personal),
+    personalBest: Math.max(!recordEligible(engine)||!waterConicalRecordEligible(engine)?0:engine.bottleId==='lab-flask'&&engine.recordEpoch!==FLASK_RECORD_EPOCH?0:engine.score, profile.bottles?.[engine.bottleId]?.score ?? 0, personal),
     worldBest: shared ? shared.record?.score ?? 0 : null
   };
 }
@@ -167,6 +175,7 @@ export class Achievements {
         if(!this.storageAvailable)throw new Error('Browser saving is unavailable. Enable it to join shared achievements.');
         const snapshot = {name: this.profile.name, score: this.profile.score, highestTile: this.profile.highestTile, bottles: structuredClone(this.profile.bottles),
           milestoneRuns:Object.fromEntries(pendingMilestoneRuns(this.profile).slice(0,MILESTONE_BATCH_SIZE)),
+          ...(waterConicalResetActive(this.rule.id)&&this.profile.bottles['conical-flask-water']?{waterConicalRecord:{epoch:WATER_CONICAL_RECORD_EPOCH,...this.profile.bottles['conical-flask-water']}}:{}),
           ...(this.profile.bottles['lab-flask'] ? {flaskRecord: structuredClone(this.profile.flaskRecord)} : {})};
         const previous = this.summary;
         this.summary = await this.request('/api/achievements', snapshot);

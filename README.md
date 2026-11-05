@@ -117,3 +117,21 @@ Three Combine uses 138% effective size for those vessels. Official settings
 are fixed and show each vessel’s real defaults. Scores, saved-round identity,
 shared Top 5 boards, milestone counters and announcement dates are preserved.
 Development/test keeps the editable per-bottle settings and Lab separately.
+
+
+### Official water-conical record season
+
+The official **Two Combine / Conical flask · water** Top 5 and per-bottle personal
+bests restarted on 2026-11-05. Start a new round to compete on the fresh board;
+older saved rounds remain playable but cannot restore a pre-reset score.
+The dry conical flask, Three Combine, test-site records, overall personal bests,
+player identities and milestone totals keep their previous values.
+
+`0013_water_conical_record_season.sql` adds an isolated score table and read view;
+it deletes no records on either site. The official Two API and browser use
+water-conical record epoch 2. The one-time, explicitly authorized production
+operation is `cloudflare/operations/reset-official-water-conical-two.sql`.
+It clears only that bottle's Two Combine scores and excludes legacy writes
+from its holder triggers. Never apply that operation to test or repeat it after
+fresh scores have been earned. The private pre-reset export and verification
+are archived under `.releases/reset-water-conical-two-2026-11-05/`.

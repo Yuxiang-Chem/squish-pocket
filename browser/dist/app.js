@@ -1,20 +1,20 @@
-import {drawBlobArt,BLOB_COLORS as colors} from './blob-art.js?v=89';
-import {createMergePreviews} from './merge-preview.js?v=89';
-import {t,onLanguageChange,mountLanguagePicker} from './i18n.js?v=89';
-import {recordEligible,recordScore} from './record-epoch.js?v=89';
-import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=89';
-import {createStartPage} from './start-page.js?v=89';
-import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=89';
+import {drawBlobArt,BLOB_COLORS as colors} from './blob-art.js?v=91';
+import {createMergePreviews} from './merge-preview.js?v=91';
+import {t,onLanguageChange,mountLanguagePicker} from './i18n.js?v=91';
+import {recordEligible,recordScore} from './record-epoch.js?v=91';
+import {CURRENT_RULE,ruleFor,saveKeyFor} from './merge-rules.js?v=91';
+import {createStartPage} from './start-page.js?v=91';
+import {Engine,blob,WIDTH,HEIGHT,MAX_LEVEL,setReducedMergeMotion} from './engine.js?v=91';
 import {MAX_ANGLE,aimFromPoint,clampAngle,launchOrigin} from './controls.js?v=6';
-import {PHYSICS_DEFAULTS_VERSION,playerPhysics,defaultPhysicsFor} from './physics-settings.js?v=89';
-import {RackMotion} from './rack-motion.js?v=89';
-import {isBottleId} from './bottles.js?v=89';
+import {PHYSICS_DEFAULTS_VERSION,playerPhysics,defaultPhysicsFor} from './physics-settings.js?v=91';
+import {RackMotion} from './rack-motion.js?v=91';
+import {isBottleId} from './bottles.js?v=91';
 
 import {DragMotion} from './drag-motion.js?v=29';
-import {HOLE,dragOutsideGlass} from './preparation.js?v=89';
+import {HOLE,dragOutsideGlass} from './preparation.js?v=91';
 import {pullMode,pullShot,insertionIndex} from './preparation-gesture.js?v=29';
 import {installShootTouchGuard} from './shoot-touch.js?v=29';
-import {connectAchievements} from './achievements.js?v=89';
+import {connectAchievements} from './achievements.js?v=91';
 
 const $=id=>document.getElementById(id);
 const canvas=$('canvas'),ctx=canvas.getContext('2d'),overlay=$('overlay');

@@ -450,3 +450,33 @@ Local real multiplayer passed both rules. The live holder-note/permission
 checks also passed, with no messages sent. All shared QA writes were mocked.
 Receipts, logs and public before/after audits are archived privately under
 `.releases/publish-game-previews-2026-11-05/`.
+
+
+## Official Two Combine water-conical record reset — 2026-11-05
+
+Lab-free v91 was verified on test as `953bfa1a-d021-4a94-8f93-2ffbc262f4c9`
+and promoted through the exact-source release guard to official
+`b8a2b41b-9379-464a-bd6d-318499db7007`, digest
+`b297afd8422362220d5d85bd050f716777583c804234bd898e5f7ad3a54ce753`.
+All 243 checks passed (199 game/locale, 39 backend/release, five Worker runtime),
+with all 36 assets and both APIs verified. Migration 0013 is additive on both
+sites and leaves test records untouched.
+
+The user explicitly selected official only, Two Combine only, clearing the
+water conical flask's Top 5 and all personal bests. A full private D1 export was
+validated before the one-time SQL operation; it contained 27 attributed rows
+for this bottle. The operation cleared those rows and holder, protecting the
+fresh table from old Worker writes. New clients discard this bottle's old
+personal score once; old saved rounds retain gameplay progress but do not
+compete until a new round starts. Two Combine's other seven boards, all Three
+Combine boards, test boards, overall records, identities, messages and
+milestone totals are preserved. Conical/funnel official sizes remain 115%.
+
+SQLite integration checks covered stale uploads, old Worker writes, fresh
+scores, ranks, ties, input validation and isolation. Local Chromium/WebKit
+covered both hostnames, old saves, fresh uploads and continuation. The deployed
+test and official browser checks passed with all score/message writes mocked.
+Logs, receipts, public before/after boards, the validated backup and reset
+verification are private under `.releases/reset-water-conical-two-2026-11-05/`.
+The development test branch is restored separately with Lab and the requested
+100% separating-funnel base size; those changes are not included in official.

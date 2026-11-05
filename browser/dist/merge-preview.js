@@ -1,5 +1,5 @@
-import {drawBlobArt} from './blob-art.js?v=89';
-import {ruleFor,valueFor} from './merge-rules.js?v=89';
+import {drawBlobArt} from './blob-art.js?v=91';
+import {ruleFor,valueFor} from './merge-rules.js?v=91';
 const clamp=v=>Math.max(0,Math.min(1,v));
 const smooth=v=>{v=clamp(v);return v*v*(3-2*v);};
 const PERIOD=3800;

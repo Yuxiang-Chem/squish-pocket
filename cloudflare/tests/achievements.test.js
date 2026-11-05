@@ -19,6 +19,7 @@ function setup({beforeReset=false,beforeThree=false,beforeFresh=false,beforeTota
   if(!beforeThree)sql.exec(readFileSync(new URL('../migrations/0010_three_combine.sql', import.meta.url), 'utf8'));
   if(!beforeThree&&!beforeFresh)sql.exec(readFileSync(new URL('../migrations/0011_three_combine_fresh_achievements.sql',import.meta.url),'utf8'));
   if(!beforeTotals)sql.exec(readFileSync(new URL('../migrations/0012_milestone_totals.sql',import.meta.url),'utf8'));
+  if(!beforeReset)sql.exec(readFileSync(new URL('../migrations/0013_water_conical_record_season.sql',import.meta.url),'utf8'));
   const db = {prepare(query) {
     return {values: [], bind(...values) { this.values = values; return this; },
       async run() { const result = sql.prepare(query).run(...this.values); return {meta: {changes: result.changes}}; },
@@ -30,9 +31,9 @@ function setup({beforeReset=false,beforeThree=false,beforeFresh=false,beforeTota
   const env = {ACHIEVEMENTS: db, EMAIL_ENABLED: 'true', EMAIL_FROM: 'records@chemisgreat.online',
     EMAIL: {async send(message) { emails.push(message); return {messageId: crypto.randomUUID()}; }}};
   const player = () => ({id: crypto.randomUUID(), token: crypto.randomUUID()});
-  async function request(path, data, identity, extraHeaders = {}) {
+  async function request(path, data, identity, extraHeaders = {},hostname='game.example') {
     if(data&&path.includes('merge=three')&&data.achievementEpoch===undefined)data={...data,achievementEpoch:2};
-    const response = await worker.fetch(new Request(`https://game.example${path}`, {
+    const response = await worker.fetch(new Request(`https://${hostname}${path}`, {
       method: data ? 'POST' : 'GET', headers: {'Content-Type': 'application/json',
         ...(identity ? {'X-Player-Id': identity.id, Authorization: `Bearer ${identity.token}`} : {}), ...extraHeaders},
       ...(data ? {body: JSON.stringify(data)} : {})
@@ -458,4 +459,36 @@ test('adding totals preserves every existing board and starts with no invented h
  assert.deepEqual(snapshot(),before);
  for(const mode of ['two','three']){const r=await t.request('/api/achievements?merge='+mode);assert.equal(r.status,200);assert.equal(r.data.totalMilestones,0);assert.equal(r.data.reachedMilestone,1);assert.equal(r.data.record.name,'Keep me');}
  assert.deepEqual(t.sql.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+
+
+test('official Two water-conical reset clears all personal ranks and rejects pre-reset uploads without touching other boards',async()=>{
+ const t=setup(),a=t.player(),b=t.player(),id='conical-flask-water';
+ const payload=(score=400)=>({name:'Conical friend',score,highestTile:2048,bottles:{[id]:{score,highestTile:2048},'conical-flask':{score:80,highestTile:32}}});
+ await t.request('/api/achievements',payload(400),a);await t.request('/api/achievements',payload(800),b);
+ await t.request('/api/achievements?merge=three',{name:'Triple friend',score:81,highestTile:27,bottles:{[id]:{score:81,highestTile:27}}},a);
+ const allTables=()=>t.sql.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT IN ('bottle_scores','bottle_records','water_conical_current_scores') ORDER BY name").all().map(({name})=>[name,t.sql.prepare('SELECT * FROM '+name).all()]);
+ const otherTables=allTables(),otherScores=t.sql.prepare('SELECT * FROM bottle_scores WHERE bottle_id<>? ORDER BY player_id,bottle_id').all(id);
+ t.sql.exec(readFileSync(new URL('../operations/reset-official-water-conical-two.sql',import.meta.url),'utf8'));
+ assert.deepEqual(allTables(),otherTables);assert.deepEqual(t.sql.prepare('SELECT * FROM bottle_scores WHERE bottle_id<>? ORDER BY player_id,bottle_id').all(id),otherScores);
+ const official=(data,player=a)=>t.request('/api/achievements',data,player,{},'squish.chemisgreat.online');
+ let result=await official(payload(800));assert.equal(result.status,200);
+ assert.deepEqual(result.data.bottles[id].leaderboard,[]);assert.equal(result.data.bottles[id].record,null);assert.equal(result.data.bottles[id].personal.score,0);assert.equal(result.data.bottles[id].personal.highestTile,2);assert.equal(result.data.bottles[id].recordEpoch,2);
+ assert.equal(result.data.bottles['conical-flask'].personal.score,80);assert.equal(result.data.personal.score,800);assert.equal(result.data.reached2048,2);
+ // A request still running on the old Worker can touch only the legacy store.
+ t.sql.prepare('INSERT INTO bottle_scores VALUES(?,?,?,?,?)').run(a.id,id,1200,2048,Date.now());
+ result=await official(undefined);assert.equal(result.data.bottles[id].record,null);assert.deepEqual(result.data.bottles[id].leaderboard,[]);
+ const fresh={name:'Fresh friend',score:800,highestTile:2048,bottles:{[id]:{score:40,highestTile:16}},waterConicalRecord:{epoch:2,score:40,highestTile:16}};
+ result=await official(fresh);assert.equal(result.status,200);assert.equal(result.data.bottles[id].record.score,40);assert.equal(result.data.bottles[id].personal.score,40);assert.equal(result.data.bottles[id].personal.highestTile,16);assert.equal(result.data.bottles[id].isRecordHolder,true);
+ result=await official({...fresh,waterConicalRecord:{epoch:2,score:20,highestTile:8}},b);assert.equal(result.data.bottles[id].leaderboard.length,2);assert.equal(result.data.bottles[id].leaderboard[0].score,40);
+ result=await official(payload(1600));assert.equal(result.data.bottles[id].record.score,40);assert.equal(result.data.bottles[id].personal.score,40);
+ assert.equal((await official({...fresh,waterConicalRecord:{epoch:1,score:40,highestTile:16}})).status,400);
+ assert.equal((await official({...fresh,waterConicalRecord:{epoch:2,score:44,highestTile:16}})).status,400);
+ const triple=await t.request('/api/achievements?merge=three',undefined,undefined,{},'squish.chemisgreat.online');assert.equal(triple.data.bottles[id].record.score,81);assert.equal(triple.data.bottles[id].recordEpoch,undefined);
+});
+
+test('additive water-conical schema and new API preserve the test site records',async()=>{
+ const t=setup(),a=t.player(),id='conical-flask-water';
+ const result=await t.request('/api/achievements',{name:'Test friend',score:400,highestTile:128,bottles:{[id]:{score:400,highestTile:128}}},a,{},'squish-test.chemisgreat.online');
+ assert.equal(result.status,200);assert.equal(result.data.bottles[id].record.score,400);assert.equal(result.data.bottles[id].personal.score,400);assert.equal(result.data.bottles[id].recordEpoch,undefined);assert.equal(t.sql.prepare('SELECT COUNT(*) n FROM water_conical_current_scores').get().n,0);
 });
